@@ -1,7 +1,7 @@
 const express = require("express");
 var SSH2Promise = require('ssh2-promise');
 var { Client: PGClient } = require('pg');
-
+const cors = require('cors');
 const sshConfig = {
   username: 'crables',
   password: '!Data2020!',
@@ -11,7 +11,9 @@ const sshConfig = {
 
 const app = express();
 const port = process.env.PORT || 3001;
-
+app.use(cors({
+  origin: '*'
+}));
 app.get('/', (req, res) => res.send('Hello World!'));
 
 app.post('/get_esi', async (req, res) => {

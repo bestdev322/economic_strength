@@ -11,6 +11,7 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "pg": "^8.11.0",
     "ssh2-promise": "^1.0.3"
