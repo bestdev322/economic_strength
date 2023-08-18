@@ -121,6 +121,38 @@ app.get('/distributions_chart_4', (req, res) => {
   })
 });
 
+app.get('/forecasts_chart_1', (req, res) => {
+  request('https://fiscalbeat.s3.us-east-2.amazonaws.com/forecasts/forecasts_chart_1.json', function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      res.json(body);
+    }
+  })
+});
+
+app.get('/heatmap_chart_2', (req, res) => {
+  request('https://fiscalbeat.s3.us-east-2.amazonaws.com/forecasts/heatmap_chart_2.json', function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      res.json(body);
+    }
+  })
+});
+
+app.get('/heatmap_current_values_chart_2', (req, res) => {
+  request('https://fiscalbeat.s3.us-east-2.amazonaws.com/forecasts/heatmap_current_values_chart_2.json', function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      res.json(body);
+    }
+  })
+});
+
+app.get('/r2_values_chart_3', (req, res) => {
+  request('https://fiscalbeat.s3.us-east-2.amazonaws.com/forecasts/r2_values_chart_3.json', function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      res.json(body);
+    }
+  })
+});
+
 app.listen(port, () => console.log(`Economic backend listening on port ${port}!`));
 
 
