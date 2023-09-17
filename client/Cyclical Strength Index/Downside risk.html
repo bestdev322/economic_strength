@@ -1,0 +1,261 @@
+<script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/dark.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/plugins/rangeSelector.js"></script>
+<div class="card-body m-0 p-0">
+    <div id="chartdiv4" style="width:100%; height: 75vh;"></div>
+    <div id="data"></div>
+    <script>
+
+        ; (async function () {
+            var json_data4 = [];
+            await fetch('https://economics-service.onrender.com/distributions_chart_4')
+                .then(response => response.json())
+                .then(response => { json_data4 = JSON.parse(response) });
+            var chart4_data = Object.keys(json_data4.sp500).map(x_val => ({
+                x_value: x_val,
+                black_scholes: json_data4.black_scholes[x_val],
+                q1: json_data4.quadrant1[x_val],
+                q2: json_data4.quadrant2[x_val],
+                q3: json_data4.quadrant3[x_val],
+                q4: json_data4.quadrant4[x_val],
+                sp500: json_data4.sp500[x_val],
+            }));
+            downloadRisk(chart4_data)
+        })();
+
+        function downloadRisk(distributions_data) {
+            // Themes begin
+            am4core.useTheme(am4themes_animated);
+            // Themes end
+
+            am4charts.ValueAxis.prototype.getSeriesDataItem = function (series, position) {
+                var key = this.axisFieldName + this.axisLetter;
+                var value = this.positionToValue(position);
+                return series.dataItems.getIndex(series.dataItems.findClosestIndex(value, function (x) {
+                    return x[key];
+                }, "any"));
+            }
+
+            //console.log(d);
+            //console.log(new Date(2015,1,1));
+
+            // Create chart instance
+            var quad_fat_tail_chart = am4core.create("chartdiv4", am4charts.XYChart);
+            quad_fat_tail_chart.responsive.enabled = true;
+
+            // Add data
+            quad_fat_tail_chart.data = distributions_data;
+
+            var quad_fat_tail_chart_title = quad_fat_tail_chart.titles.create();
+            quad_fat_tail_chart_title.text = "Quadrant Fat Tail Analysis";
+            quad_fat_tail_chart_title.fontSize = 15;
+            quad_fat_tail_chart_title.marginBottom = 15;
+
+            // CSI1 vs CSI2 Logic .......................
+            var quad_fat_xAxis = quad_fat_tail_chart.xAxes.push(new am4charts.ValueAxis());
+            quad_fat_xAxis.renderer.minGridDistance = 40;
+            quad_fat_xAxis.numberFormatter = new am4core.NumberFormatter();
+            quad_fat_xAxis.numberFormatter.numberFormat = "#.# %";
+            quad_fat_xAxis.renderer.line.strokeOpacity = 1;
+            //xAxis.renderer.grid.template.disabled = true;
+
+
+            var quad_fat_valueAxis = quad_fat_tail_chart.yAxes.push(new am4charts.ValueAxis());
+            quad_fat_valueAxis.title.text = "Expected Returns Distribution";
+            quad_fat_valueAxis.renderer.line.strokeOpacity = 1;
+            //valueAxis.renderer.grid.template.disabled = true;
+
+            var quad_fat_tail_series1 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series1.name = "S&P 500";
+            quad_fat_tail_series1.dataFields.valueY = "sp500";
+            quad_fat_tail_series1.dataFields.valueX = "x_value";
+            quad_fat_tail_series1.tooltipText = "S&P 500 : {valueY.value}";
+            quad_fat_tail_series1.tooltip.pointerOrientation = "vertical";
+            quad_fat_tail_series1.strokeWidth = 2;
+            quad_fat_tail_series1.xAxis = quad_fat_xAxis;
+            quad_fat_tail_series1.yAxis = quad_fat_valueAxis;
+            quad_fat_tail_series1.tensionX = 0.93;
+            quad_fat_tail_series1.tensionY = 0.91;
+            quad_fat_tail_series1.hidden = true;
+            quad_fat_tail_series1.events.on("hidden", function () {
+                quad_fat_tail_series1.hide();
+            });
+
+            quad_fat_tail_series1.events.on("shown", function () {
+                quad_fat_tail_series1.show();
+            });
+
+            var quad_fat_tail_series2 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series2.name = "Quadrant 1";
+            quad_fat_tail_series2.dataFields.valueY = "q1";
+            quad_fat_tail_series2.dataFields.valueX = "x_value";
+            quad_fat_tail_series2.tooltipText = "Quadrant 1 : {q1}";
+            quad_fat_tail_series2.tooltip.pointerOrientation = "vertical";
+            quad_fat_tail_series2.strokeWidth = 2;
+            quad_fat_tail_series2.tensionX = 0.93;
+            quad_fat_tail_series2.tensionY = 0.91;
+            quad_fat_tail_series2.fill = "#8AC926";
+            quad_fat_tail_series2.stroke = "#8AC926";
+
+            var quad_fat_tail_series3 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series3.name = "Quadrant 2";
+            quad_fat_tail_series3.dataFields.valueY = "q2";
+            quad_fat_tail_series3.dataFields.valueX = "x_value";
+            quad_fat_tail_series3.tooltipText = "Quadrant 2 : {q2}";
+            quad_fat_tail_series3.tooltip.pointerOrientation = "vertical";
+            quad_fat_tail_series3.strokeWidth = 2;
+            quad_fat_tail_series3.tensionX = 0.93;
+            quad_fat_tail_series3.tensionY = 0.91;
+            quad_fat_tail_series3.fill = "#FFCA3A";
+            quad_fat_tail_series3.stroke = "#FFCA3A";
+
+            var quad_fat_tail_series4 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series4.name = "Quadrant 3";
+            quad_fat_tail_series4.dataFields.valueY = "q3";
+            quad_fat_tail_series4.dataFields.valueX = "x_value";
+            quad_fat_tail_series4.tooltipText = "Quadrant 3 : {q3}";
+            quad_fat_tail_series4.tooltip.pointerOrientation = "vertical";
+            quad_fat_tail_series4.strokeWidth = 2;
+            quad_fat_tail_series4.tensionX = 0.93;
+            quad_fat_tail_series4.tensionY = 0.91;
+            quad_fat_tail_series4.fill = "#FF595E";
+            quad_fat_tail_series4.stroke = "#FF595E";
+
+            var quad_fat_tail_series5 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series5.name = "Quadrant 4";
+            quad_fat_tail_series5.dataFields.valueY = "q4";
+            quad_fat_tail_series5.dataFields.valueX = "x_value";
+            quad_fat_tail_series5.tooltipText = "Quadrant 4 : {q4}";
+            quad_fat_tail_series5.tooltip.pointerOrientation = "vertical";
+            quad_fat_tail_series5.strokeWidth = 2;
+            quad_fat_tail_series5.tensionX = 0.93;
+            quad_fat_tail_series5.tensionY = 0.91;
+            quad_fat_tail_series5.fill = "#1982C4";
+            quad_fat_tail_series5.stroke = "#1982C4";
+
+            var quad_fat_tail_series6 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series6.name = "Black Scholes";
+            quad_fat_tail_series6.dataFields.valueY = "black_scholes";
+            quad_fat_tail_series6.dataFields.valueX = "x_value";
+            quad_fat_tail_series6.tooltipText = "Black Scholes : {black_scholes}";
+            quad_fat_tail_series6.tooltip.pointerOrientation = "vertical";
+            quad_fat_tail_series6.strokeWidth = 2;
+            quad_fat_tail_series6.tensionX = 0.93;
+            quad_fat_tail_series6.tensionY = 0.91;
+            quad_fat_tail_series6.hidden = true;
+            quad_fat_tail_series6.events.on("hidden", function () {
+                quad_fat_tail_series6.hide();
+            });
+
+            quad_fat_tail_series6.events.on("shown", function () {
+                quad_fat_tail_series6.show();
+            });
+
+            var quad_fat_tail_label = quad_fat_tail_chart.createChild(am4core.Label);
+            quad_fat_tail_label.text = "";
+            //quad_fat_tail_label.fontSize = 18;
+            quad_fat_tail_label.align = "center";
+            quad_fat_tail_label.isMeasured = false;
+            quad_fat_tail_label.x = am4core.percent(13);
+            quad_fat_tail_label.y = am4core.percent(30);
+            quad_fat_tail_label.fill = "black";
+
+            var quad_fat_tail_series8 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series8.data = [{ "x": -0.04, "y": 2.5 },];
+            quad_fat_tail_series8.dataFields.valueY = "y";
+            quad_fat_tail_series8.dataFields.valueX = "x";
+            quad_fat_tail_series8.hiddenInLegend = true;
+
+            var circleBullet = quad_fat_tail_series8.bullets.push(new am4charts.CircleBullet());
+            circleBullet.circle.radius = 33;
+            circleBullet.circle.fill = am4core.color("#fff");
+            circleBullet.circle.strokeWidth = 2;
+            circleBullet.circle.fillOpacity = 0.0;
+            circleBullet.circle.stroke = "black";
+
+            var quad_fat_tail_series9 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series9.data = [{ "x": -0.05, "y": 22 }, { "x": -0.041, "y": 6.5 },];
+            quad_fat_tail_series9.dataFields.valueY = "y";
+            quad_fat_tail_series9.dataFields.valueX = "x";
+            quad_fat_tail_series9.hiddenInLegend = true;
+            quad_fat_tail_series9.stroke = "black";
+            quad_fat_tail_series9.strokeWidth = 2;
+
+            var quad_fat_tail_series7 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+            quad_fat_tail_series7.name = "Annotation";
+            quad_fat_tail_series7.dataFields.valueY = "A";
+            quad_fat_tail_series7.dataFields.valueX = "B";
+            //option_accuracy_series4.hidden=true;
+            quad_fat_tail_series7.strokeWidth = 0;
+            quad_fat_tail_series7.events.on("hidden", function () {
+                quad_fat_tail_label.text = "";
+                quad_fat_tail_series8.hide();
+                quad_fat_tail_series9.hide();
+            });
+
+            quad_fat_tail_series7.events.on("shown", function () {
+                quad_fat_tail_label.text = "[bold]The likelyhood of large sell-offs\n varies significantly based on CSI\n quadrants.[/]";
+                quad_fat_tail_series8.show();
+                quad_fat_tail_series9.show();
+            });
+
+
+            // Cursor
+            quad_fat_tail_chart.cursor = new am4charts.XYCursor();
+            //quad_fat_tail_chart.cursor.xAxis = quad_fat_xAxis;
+            //quad_fat_tail_chart.cursor.yAxis = quad_fat_valueAxis;
+            quad_fat_tail_chart.scrollbarY = new am4core.Scrollbar();
+            quad_fat_tail_chart.scrollbarX = new am4core.Scrollbar();
+
+
+            // And, for a good measure, let's add a legend
+            quad_fat_tail_chart.legend = new am4charts.Legend();
+            //quad_fat_tail_chart.legend.position = "right";
+            //quad_fat_tail_chart.numberFormatter.numberFormat = "#.# %";
+
+            quad_fat_tail_chart.responsive.rules.push({
+                relevant: function (target) {
+                    if (target.pixelWidth <= 700) {
+                        return true;
+                    }
+
+                    return false;
+                },
+                state: function (target, stateId) {
+
+                    if (target instanceof am4charts.Chart) {
+                        var state = target.states.create(stateId);
+                        state.properties.paddingTop = 5;
+                        state.properties.paddingRight = 5;
+                        state.properties.paddingBottom = 5;
+                        state.properties.paddingLeft = 5;
+                        state.properties.fontSize = 9;
+                        return state;
+                    }
+
+                    if (target instanceof am4charts.Legend) {
+                        var state = target.states.create(stateId);
+                        state.properties.paddingTop = 0;
+                        state.properties.paddingRight = 0;
+                        state.properties.paddingBottom = 0;
+                        state.properties.paddingLeft = 0;
+                        state.properties.marginLeft = 0;
+                        state.properties.fontSize = 9;
+                        return state;
+                    }
+
+                    if (target instanceof am4charts.AxisLabel) {
+                        var state = target.states.create(stateId);
+                        state.properties.fontSize = 9;
+                        return state;
+                    }
+
+                    return null;
+                }
+            });
+        }
+
+    </script>
+</div>

@@ -1,0 +1,127 @@
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/radar.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/plugins/exporting.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+<div class="card-body m-0 p-0">
+    <script>
+        ; (async function () {
+            var json_data3 = [];
+            var we_here = [];
+            await fetch('https://economics-service.onrender.com/r2_values_chart_3')
+                .then(response => response.json())
+                .then(response => { json_data3 = JSON.parse(response) });
+            var chart3_data = [{ value:1, 'category': 'Forecast r2 without ESI', 'value2': json_data3.r2[0].toFixed(2) }, { value:1, 'category': 'Forecast r2 with ESI', 'value2': json_data3.r2[1].toFixed(2) }]
+            accuracyChart(chart3_data)
+        })();
+        function accuracyChart(chart3_data) {
+            am5.ready(function () {
+
+                var root = am5.Root.new("chartdiv3");
+
+                root.setThemes([
+                    am5themes_Animated.new(root)
+                ]);
+
+                var chart = root.container.children.push(am5percent.PieChart.new(root, {
+                    //layout: root.verticalLayout,
+                    marginTop: 0,
+                    paddingTop: 0,
+                    showTooltipOn: "click",
+                    radius: am5.percent(85),
+                }));
+
+                var series = chart.series.push(am5percent.PieSeries.new(root, {
+                    valueField: "value",
+                    categoryField: "category",
+                    startAngle: 0,
+                    endAngle: 360,
+                }));
+
+                series.slices.template.setAll({
+                    strokeWidth: 2,
+                    stroke: am5.color(0xffffff),
+                    tooltipText: "{category}: {value2}"
+                });
+
+                series.get("colors").set("colors", [
+                    am5.color(0xee8c8c),
+                    am5.color(0x0957a2),
+                ]);
+
+                //series.labelsContainer.set("paddingTop", 30)
+                series.labels.template.set("visible", false);
+                series.ticks.template.set("visible", false);
+
+                series.slices.template.adapters.add("radius", function (radius, target) {
+                    var dataItem = target.dataItem;
+                    var high = series.getPrivate("valueHigh");
+
+                    if (dataItem) {
+                        var value = target.dataItem.get("valueWorking", 0);
+                        //console.log(dataItem.dataContext.category);
+
+                        if (dataItem.dataContext.category == "Forecast r2 without ESI") {
+                            return radius * value / (1.4 * high)
+                        }
+
+                        return radius * value / high
+                    }
+                    return radius;
+                });
+
+
+                series.data.setAll(chart3_data);
+
+                chart.children.unshift(am5.Label.new(root, {
+                    text: "Improved Forecast Accuracy",
+                    fontSize: 18,
+                    fontWeight: "700",
+                    textAlign: "center",
+                    x: am5.percent(50),
+                    centerX: am5.percent(50),
+                    paddingTop: 0,
+                }));
+
+                var label = root.tooltipContainer.children.push(am5.Label.new(root, {
+                    text: chart3_data[0].value2,
+                    x: am5.p50,
+                    y: am5.percent(60),
+                    centerX: am5.p50,
+                    centerY: am5.p50,
+                    fill: am5.color(0xffffff),
+                    fontSize: 50
+                }));
+
+                var label = root.tooltipContainer.children.push(am5.Label.new(root, {
+                    text: chart3_data[1].value2,
+                    x: am5.p50,
+                    y: am5.percent(40),
+                    centerX: am5.p50,
+                    centerY: am5.p50,
+                    fill: am5.color(0xffffff),
+                    fontSize: 50
+                }));
+
+                var gradient1 = am5.LinearGradient.new(root, {
+                    stops: [{
+                        brighten: -0.5,
+                    }, {
+                        brighten: 1.0,
+                    }],
+                    rotation: 15
+                });
+
+                series.slices.template.set("fillGradient", gradient1);
+
+
+
+            });
+        }
+    </script>
+
+    <div id="chartdiv3" style="width:50%; height:50vh;" class="mx-auto"></div>
+
+</div>

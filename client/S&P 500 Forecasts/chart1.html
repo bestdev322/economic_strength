@@ -1,0 +1,362 @@
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/radar.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/plugins/exporting.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+
+<div class="card-body m-0 p-0">
+    <script>
+        ; (async function () {
+            var json_data1 = [];
+            await fetch('https://economics-service.onrender.com/forecasts_chart_1')
+                .then(response => response.json())
+                .then(response => { json_data1 = JSON.parse(response) });
+            var chart1_data = Object.keys(json_data1.time_period).map(index => ({
+                year: json_data1.time_period[index],
+                time_period: `${json_data1.time_period[index]} years`,
+                average_returns: json_data1.avg_returns[index],
+                difference_from_avg: json_data1.percent_difference[index],
+                forecasted_returns: json_data1.forecasted_returns[index],
+            }));
+            chart1_data = chart1_data.sort((a, b) => {
+                if (a.year < b.year)
+                    return 1;
+                else if (a.year > b.year)
+                    return -1;
+                else
+                    return 0;
+            });
+            SP500Forecasts(chart1_data)
+        })();
+        function SP500Forecasts(market_data) {
+            am5.ready(function () {
+
+                var root = am5.Root.new("chartdiv1");
+
+                root.numberFormatter.set("numberFormat", "#,###.00 %");
+
+                root.setThemes([
+                    am5themes_Animated.new(root)
+                ]);
+
+
+                var chart = root.container.children.push(am5xy.XYChart.new(root, {
+                    panX: false,
+                    panY: false,
+                    wheelX: "none",
+                    wheelY: "none",
+                    layout: root.verticalLayout
+                }));
+
+                chart.set("scrollbarX", am5.Scrollbar.new(root, {
+                    orientation: "horizontal"
+                }));
+
+                chart.children.unshift(am5.Label.new(root, {
+                    text: "Long-term S&P 500 Forecasts\n(vs Historical Avgs)",
+                    fontSize: 18,
+                    fontWeight: "700",
+                    textAlign: "center",
+                    x: am5.percent(50),
+                    centerX: am5.percent(50),
+                    paddingTop: 0,
+                    paddingBottom: 0,
+                }));
+
+                var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+                    min: 0,
+                    categoryField: "time_period",
+                    renderer: am5xy.AxisRendererX.new(root, { minGridDistance: 30 }),
+                    tooltip: am5.Tooltip.new(root, {
+                        themeTags: ["axis"],
+                        animationDuration: 200
+                    })
+                }));
+
+                xAxis.data.setAll(market_data);
+
+                let maxValue = Math.max.apply(null,
+                    market_data.map(function (o) { return o.forecasted_returns; }));
+                var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                    min: 0,
+                    max: maxValue + 0.1,
+                    renderer: am5xy.AxisRendererY.new(root, {})
+                }));
+                yAxis.set("numberFormatter", am5.NumberFormatter.new(root, {
+                    "numberFormat": "#,### %",
+                }));
+
+                var series0 = chart.series.push(am5xy.ColumnSeries.new(root, {
+                    name: "Avg. Returns",
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "average_returns",
+                    categoryXField: "time_period",
+                    clustered: false,
+                    stroke: am5.color(0xCFCFCF),
+                    fill: am5.color(0xCFCFCF),
+                    tooltip: am5.Tooltip.new(root, {
+                        labelText: "Avg. Returns: {valueY}"
+                    })
+                }));
+
+                series0.columns.template.setAll({
+                    width: am5.percent(60),
+                    tooltipY: 0,
+                    cornerRadiusTL: 6,
+                    cornerRadiusTR: 6,
+                    strokeOpacity: 0,
+                });
+
+                series0.columns.template.set("fillGradient", am5.LinearGradient.new(root, {
+                    stops: [{
+                        color: am5.color(0xe6e9f0),
+                        opacity: 1.0,
+                        offset: 0.5
+                    },
+                    {
+                        color: am5.color(0xe8eff5),
+                        opacity: 1.0
+                    }],
+                    rotation: 0,
+                }));
+
+                series0.data.setAll(market_data);
+
+                var stepSeries = chart.series.push(am5xy.StepLineSeries.new(root, {
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "average_returns",
+                    categoryXField: "time_period",
+                    noRisers: true,
+                    locationX: 0.5,
+                    stepWidth: am5.p50,
+                    stroke: am5.color(0x808080)
+                }));
+
+                stepSeries.data.setAll(market_data);
+
+                var series1 = chart.series.push(am5xy.ColumnSeries.new(root, {
+                    name: "Forecasted Returns",
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "forecasted_returns",
+                    categoryXField: "time_period",
+                    clustered: false,
+                    fill: am5.color(0xadd8e6),
+                    tooltip: am5.Tooltip.new(root, {
+                        labelText: "Forecasted Returns: {valueY}"
+                    })
+                }));
+
+                series1.columns.template.setAll({
+                    width: am5.percent(30),
+                    tooltipY: 0,
+                    strokeOpacity: 0,
+                    cornerRadiusTL: 6,
+                    cornerRadiusTR: 6,
+                });
+
+                //series1.on("visible", function(visible, target) {
+                //    if (visible) {
+                //        series2.show();
+                //    } else {
+                //        series2.hide();
+                //    }
+                //    }
+                //);
+
+                series1.columns.template.set("fillGradient", am5.LinearGradient.new(root, {
+                    stops: [{
+                        color: am5.color(0xf5bc78),
+                        opacity: 1.0,
+                        offset: 0.3
+                    },
+                    {
+                        color: am5.color(0xf6cd99),
+                        opacity: 1.0
+                    },
+                    {
+                        color: am5.color(0xfce3bc),
+                        opacity: 0.7
+                    }],
+                    rotation: 0,
+                }));
+
+                series1.data.setAll(market_data);
+
+                var series2 = chart.series.push(am5xy.ColumnSeries.new(root, {
+                    name: "Forecasted Difference \nCompared to Average",
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "forecasted_returns",
+                    openValueYField: "average_returns",
+                    categoryXField: "time_period",
+                    //fill: am5.color(0x555555),
+                    stroke: am5.color(0x000000)
+                }));
+
+                series2.columns.template.setAll({
+                    width: 3
+                });
+
+                series2.columns.template.adapters.add("stroke", function (stroke, target) {
+                    diff = calculatePercent(target.dataItem);
+                    if (diff >= 1.0) {
+                        return am5.color(0x00cc00);
+                    }
+                    if (diff < 0.0) {
+                        return am5.color(0xcc0000);
+                    }
+                    return stroke;
+                });
+
+                series2.columns.template.adapters.add("fill", function (fill, target) {
+                    diff = calculatePercent(target.dataItem);
+                    if (diff >= 1.0) {
+                        return am5.color(0x00cc00);
+                    }
+                    if (diff < 0.0) {
+                        return am5.color(0xcc0000);
+                    }
+                    return fill;
+                });
+
+                series2.data.setAll(market_data);
+
+                series2.bullets.push(function () {
+                    var label = am5.Label.new(root, {
+                        text: "{valueY}",
+                        fontWeight: "700",
+                        fill: am5.color(0x00cc00),
+                        centerY: am5.p100,
+                        centerX: am5.p50,
+                        populateText: true
+                    });
+
+                    // Modify text of the bullet with percent
+                    label.adapters.add("text", function (text, target) {
+                        var percent = calculatePercent(target.dataItem);
+                        return percent ? percent.toFixed(2) + "%" : text;
+                    });
+
+                    // Set dynamic color of the bullet
+                    label.adapters.add("centerY", function (center, target) {
+                        return calculatePercent(target.dataItem) < 0 ? 0 : center;
+                    });
+
+                    // Set dynamic color of the bullet
+                    label.adapters.add("fill", function (fill, target) {
+                        return calculatePercent(target.dataItem) < 0 ? am5.color(0xcc0000) : fill;
+                    });
+
+                    return am5.Bullet.new(root, {
+                        locationY: 1,
+                        sprite: label
+                    });
+                });
+
+                series2.bullets.push(function () {
+                    var arrow = am5.Graphics.new(root, {
+                        rotation: -90,
+                        centerX: am5.p50,
+                        centerY: am5.p50,
+                        dy: 3,
+                        fill: am5.color(0x000000),
+                        stroke: am5.color(0x000000),
+                        draw: function (display) {
+                            display.moveTo(0, -5);
+                            display.lineTo(8, 0);
+                            display.lineTo(0, 5);
+                            display.lineTo(0, -5);
+                        }
+                    });
+
+                    arrow.adapters.add("rotation", function (rotation, target) {
+                        return calculatePercent(target.dataItem) < 0 ? 90 : rotation;
+                    });
+
+                    arrow.adapters.add("dy", function (dy, target) {
+                        return calculatePercent(target.dataItem) < 0 ? -3 : dy;
+                    });
+
+                    arrow.adapters.add("stroke", function (stroke, target) {
+                        diff = calculatePercent(target.dataItem);
+                        if (diff >= 0.0) {
+                            return am5.color(0x00cc00);
+                        }
+                        if (diff < 0.0) {
+                            return am5.color(0xcc0000);
+                        }
+                        return stroke;
+                    });
+
+                    arrow.adapters.add("fill", function (fill, target) {
+                        diff = calculatePercent(target.dataItem);
+                        if (diff >= 0.0) {
+                            return am5.color(0x00cc00);
+                        }
+                        if (diff < 0.0) {
+                            return am5.color(0xcc0000);
+                        }
+                        return fill;
+                    });
+
+                    return am5.Bullet.new(root, {
+                        locationY: 1,
+                        sprite: arrow
+                    })
+                })
+
+                var legend = chart.children.push(am5.Legend.new(root, {
+                    centerX: am5.p50,
+                    x: am5.p50
+                }));
+
+                legend.markers.template.setup = function (marker) {
+                    var check = am5.Graphics.new(root, {
+                        fill: am5.color(0x000000),
+                        fillOpacity: 1,
+                        width: 20,
+                        height: 20,
+                        layer: 50,
+                        svgPath: "M15.75 2.527c-.61-.468-1.46-.328-1.902.32l-6.325 9.255L4.04 8.328a1.3 1.3 0 0 0-1.922-.062 1.505 1.505 0 0 0-.062 2.043s4.234 4.695 4.843 5.168c.61.468 1.457.328 1.903-.32L16.05 4.55c.445-.653.308-1.555-.301-2.024Zm0 0",
+                    });
+
+                    check.states.create("disabled", {
+                        fillOpacity: 0
+                    });
+
+                    marker.children.push(check);
+                }
+
+                legend.data.push(series0);
+                legend.data.push(series1);
+                legend.data.push(series2);
+
+                var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
+
+                chart.appear(1000, 100);
+                series0.appear();
+                series1.appear();
+                series2.appear();
+
+                function calculatePercent(dataItem) {
+                    if (dataItem) {
+                        var value = dataItem.get("valueY");
+                        var openValue = dataItem.get("openValueY");
+                        var change = value - openValue;
+                        return change / openValue * 100;
+                    }
+                    return 0;
+                }
+
+            });
+        }
+    </script>
+
+    <div id="chartdiv1" style="width:80%; height:100vh;" class="mx-auto"></div>
+
+</div>

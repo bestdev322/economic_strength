@@ -1,0 +1,307 @@
+<!-- Resources -->
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/radar.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+
+<script>
+    am5.ready(async function() {
+
+    // Create root element
+    // https://www.amcharts.com/docs/v5/getting-started/#Root_element
+    var root2 = am5.Root.new("chartdiv2");
+
+
+    // Set themes
+    // https://www.amcharts.com/docs/v5/concepts/themes/
+    root2.setThemes([
+      am5themes_Animated.new(root2)
+    ]);
+
+    root2.setThemes([
+      am5themes_Responsive.new(root2)
+    ]);
+
+
+    // Create chart
+    // https://www.amcharts.com/docs/v5/charts/xy-chart/
+    var chart2 = root2.container.children.push(am5xy.XYChart.new(root2, {
+      panX: false,
+      panY: false,
+      //wheelX: "panX",
+      //wheelY: "zoomX",
+      //pinchZoomX:true,
+    }));
+
+    chart2.get("colors").set("step", 3);
+
+
+    // Add cursor
+    // https://www.amcharts.com/docs/v5/charts/xy-chart/cursor/
+    var cursor = chart2.set("cursor", am5xy.XYCursor.new(root2, {}));
+    cursor.lineY.set("visible", false);
+
+
+    // Create axes
+    // https://www.amcharts.com/docs/v5/charts/xy-chart/axes/
+    var xAxis_c2 = chart2.xAxes.push(am5xy.DateAxis.new(root2, {
+      maxDeviation: 0.3,
+      extraMax:0.01,
+      extraMin:0.01,
+      min: new Date(1976,3,5).getTime(),
+      baseInterval: {
+        timeUnit: "week",
+        count: 1
+      },
+      renderer: am5xy.AxisRendererX.new(root2, {minGridDistance: 40}),
+      tooltip: am5.Tooltip.new(root2, {})
+    }));
+
+    var yAxis_c2 = chart2.yAxes.push(am5xy.ValueAxis.new(root2, {
+      maxDeviation: 0.3,
+      max: 1.0,
+      renderer: am5xy.AxisRendererY.new(root2, {})
+    }));
+    yAxis_c2.set("numberFormatter", am5.NumberFormatter.new(root2, {
+      "numberFormat": "#,### %",
+    }));
+
+
+    // Create series
+    // https://www.amcharts.com/docs/v5/charts/xy-chart/series/
+    var series_c2 = chart2.series.push(am5xy.LineSeries.new(root2, {
+      name: "6-month Recession Likelihood",
+      xAxis: xAxis_c2,
+      yAxis: yAxis_c2,
+      valueYField: "confidence_band_upper",
+      valueXField: "date",
+      //legendValueText: "{valueY}",
+      tooltip: am5.Tooltip.new(root2, {
+        labelText: "Recession Likelihood: {valueY}"
+      })
+    }));
+    series_c2.strokes.template.setAll({
+      strokeWidth: 2,
+    });
+
+    var nber_series_c2 = chart2.series.push(am5xy.LineSeries.new(root2, {
+      name: "NBER Recessions",
+      xAxis: xAxis_c2,
+      yAxis: yAxis_c2,
+      fill: am5.color(0xFF595E),
+      fillOpacity: 0.3,
+      valueYField: "confidence_band_upper",
+      valueXField: "date",
+    }));
+    nber_series_c2.strokes.template.setAll({
+      strokeWidth: 0,
+    });
+
+    chart2.set("scrollbarX", am5.Scrollbar.new(root2, {
+      orientation: "horizontal"
+    }));
+
+    // Set data
+    var json_data2 = [];
+    await fetch('https://economics-service.onrender.com/esi_recession_likelihood_historical')
+            .then(response => response.json())
+            .then(response => {json_data2 = JSON.parse(response)});
+    console.log(json_data2)
+    var chart2_data = Object.keys(json_data2.recession_likelihood).map(date => ({
+            date,
+            confidence_band_upper: json_data2.recession_likelihood[date],
+            recession_boolean: json_data2.recession_bool[date]
+        }));
+
+    chart2_data[chart2_data.length - 1]["bullet"] = true;
+    var blinking_dot_color = am5.color(0xFF0000);
+
+    if (chart2_data[chart2_data.length-1]["confidence_band_upper"] < 0.75) {
+        blinking_dot_color = am5.color(0x22FF22);
+    }
+
+    var last_dt = chart2_data[chart2_data.length - 1].date.split("-");
+    var dt = new Date(last_dt[0], parseInt(last_dt[1])-1, last_dt[2]);
+    dt.setDate(dt.getDate() + 1);
+    var dt1 = [dt.getFullYear(), dt.getMonth()+1, dt.getDate()].join('-');
+    chart2_data.push({"date": dt1,});
+
+    dt.setDate(dt.getDate() + 1);
+    var dt2 = [dt.getFullYear(), dt.getMonth()+1, dt.getDate()].join('-');
+    chart2_data.push({"date": dt2, });
+
+    // Set Data End
+
+    // Create animating bullet by adding two circles in a bullet container and
+    // animating radius and opacity of one of them.
+    series_c2.bullets.push(function(root2, series, dataItem) {
+      if (dataItem.dataContext.bullet) {
+        var container = am5.Container.new(root2, {});
+        var circle0 = container.children.push(am5.Circle.new(root2, {
+          radius: 5,
+          fill: blinking_dot_color
+        }));
+        var circle1 = container.children.push(am5.Circle.new(root2, {
+          radius: 5,
+          fill: blinking_dot_color
+        }));
+
+        circle1.animate({
+          key: "radius",
+          to: 20,
+          duration: 1000,
+          easing: am5.ease.out(am5.ease.cubic),
+          loops: Infinity
+        });
+        circle1.animate({
+          key: "opacity",
+          to: 0,
+          from: 1,
+          duration: 1000,
+          easing: am5.ease.out(am5.ease.cubic),
+          loops: Infinity
+        });
+
+        return am5.Bullet.new(root2, {
+          sprite: container
+        })
+      }
+    })
+
+    var last_dt = chart2_data[chart2_data.length - 1].date.split("-");
+    var end_dt = new Date(last_dt[0], parseInt(last_dt[1])-1, last_dt[2]);
+    series_c2.events.once("datavalidated", function(ev, target) {
+        xAxis_c2.zoomToDates(new Date(1989, 0, 1), end_dt);
+      });
+
+    // Background Colors
+
+    var ranges = [];
+    var range_colors = [];
+
+    existing_recession_boolean = chart2_data[0].recession_boolean;
+    var dt = chart2_data[0].date.split("-");
+    var start_dt = new Date(dt[0], parseInt(dt[1])-1, dt[2]);
+    var end_dt = new Date(dt[0], parseInt(dt[1])-1, dt[2]);
+    for (let i = 1; i < chart2_data.length; i++) {
+        if (chart2_data[i].recession_boolean != existing_recession_boolean) {
+            var dt = chart2_data[i].date.split("-");
+            end_dt = new Date(dt[0], parseInt(dt[1])-1, dt[2]);
+
+            var rangeDataItem = xAxis_c2.makeDataItem({value: start_dt, endValue: end_dt});
+            xAxis_c2.createAxisRange(rangeDataItem);
+            rangeDataItem.get("grid").set("visible", false);
+            if (existing_recession_boolean == 0) {
+                rangeDataItem.get("axisFill").setAll({visible: true, fillOpacity: 0.3, fill: "white"});
+                range_colors.push("white");
+            }
+            if (existing_recession_boolean == 1) {
+                rangeDataItem.get("axisFill").setAll({visible: true, fillOpacity: 0.3, fill: am5.color(0xFF595E), stroke: "white"});
+                range_colors.push(am5.color(0xFF595E));
+            }
+
+            existing_recession_boolean = chart2_data[i].recession_boolean;
+
+            var dt = chart2_data[i].date.split("-");
+            start_dt = new Date(dt[0], parseInt(dt[1])-1, dt[2]);
+
+            ranges.push(rangeDataItem)
+
+        } else {
+            var dt = chart2_data[i].date.split("-");
+            end_dt = new Date(dt[0], parseInt(dt[1])-1, dt[2]);
+        }
+    }
+
+    var dt = chart2_data[chart2_data.length - 1].date.split("-");
+    end_dt = new Date(dt[0], parseInt(dt[1])-1, dt[2]);
+    var rangeDataItem = xAxis_c2.makeDataItem({value: start_dt, endValue: end_dt});
+    xAxis_c2.createAxisRange(rangeDataItem);
+    rangeDataItem.get("grid").set("visible", false);
+    if (existing_recession_boolean == 0) {
+        rangeDataItem.get("axisFill").setAll({visible: true, fillOpacity: 0.3, fill: "white"});
+        range_colors.push("white");
+    }
+    if (existing_recession_boolean == 1) {
+        rangeDataItem.get("axisFill").setAll({visible: true, fillOpacity: 0.3, fill: am5.color(0xFF595E)});
+        range_colors.push(am5.color(0xFF595E));
+    }
+    ranges.push(rangeDataItem)
+
+    //Logic to enable & disable NBER Recessions
+    nber_series_c2.on("visible", function(visible, target) {
+    for (let i = 0; i < ranges.length; i++) {
+        if (visible) {
+            ranges[i].get("axisFill").setAll({visible: true, fillOpacity: 0.3, fill: range_colors[i]});
+        } else {
+            ranges[i].get("axisFill").setAll({visible: false, });
+        }
+        //ranges[i].grid.disabled = true;
+        }
+    });
+
+    // Background colors logic end
+
+    series_c2.data.processor = am5.DataProcessor.new(root2, {
+        numericFields: ["value"],
+        dateFields: ["date"],
+        dateFormat: "yyyy-MM-dd"
+    });
+
+    series_c2.data.setAll(chart2_data);
+
+    root2.numberFormatter.set("numberFormat", "#,###.00 %");
+
+    // Add legend
+    // https://www.amcharts.com/docs/v5/charts/xy-chart/legend-xy-series/
+    var legendRoot = am5.Root.new("legenddiv2");
+    legendRoot.setThemes([am5themes_Animated.new(root2)]);
+    var legend = legendRoot.container.children.push(am5.Legend.new(legendRoot, {
+        width: am5.percent(100),
+        centerX: am5.percent(50),
+        x: am5.percent(60),
+        useDefaultMarker: true
+        }));
+
+    legend.markers.template.setup = function(marker) {
+      var check = am5.Graphics.new(legendRoot, {
+        fill: am5.color(0x000000),
+        fillOpacity: 1,
+        width: 20,
+        height: 20,
+        layer: 50,
+        svgPath: "M15.75 2.527c-.61-.468-1.46-.328-1.902.32l-6.325 9.255L4.04 8.328a1.3 1.3 0 0 0-1.922-.062 1.505 1.505 0 0 0-.062 2.043s4.234 4.695 4.843 5.168c.61.468 1.457.328 1.903-.32L16.05 4.55c.445-.653.308-1.555-.301-2.024Zm0 0"
+      });
+
+      check.states.create("disabled", {
+        fillOpacity: 0
+      });
+
+      marker.children.push(check);
+    }
+
+    //var legend = chart2.children.push(am5.Legend.new(root2, {
+    //    centerX: am5.p50, x: am5.p50,
+    //   }));
+    legend.data.push(series_c2);
+    legend.data.push(nber_series_c2);
+
+    legend.events.on("boundschanged", function() {
+      document.getElementById("legenddiv2").style.height = legend.height() + "px"
+    });
+
+    // Make stuff animate on load
+    // https://www.amcharts.com/docs/v5/concepts/animations/
+    series_c2.appear(1000);
+    chart2.appear(1000, 100);
+
+
+
+    });
+    </script>
+<!-- HTML -->
+<div id="chartdiv2" style="width:100%; height:62vh;"></div>
+<div id="legenddiv2" style="width:100%; height:25px;"></div>

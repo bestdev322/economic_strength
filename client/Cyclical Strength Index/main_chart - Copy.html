@@ -1,0 +1,423 @@
+<script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/dark.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/plugins/rangeSelector.js"></script>
+<div class="card-body m-0 p-0">
+    <div id="controls"></div>
+    <div id="chartdiv1" style="width:100%; height:87vh;"></div>
+    <div id="data"></div>
+    <script>
+        ; (async function () {
+            // Themes begin
+            am4core.useTheme(am4themes_animated);
+            // Themes end
+
+            var json_data1 = [];
+            await fetch('https://economics-service.onrender.com/csi_data_chart_1')
+                .then(response => response.json())
+                .then(response => { json_data1 = JSON.parse(response) });
+
+            var chart1_data = Object.keys(json_data1.open).map(date => ({
+                date,
+                open: json_data1.open[date],
+                high: json_data1.high[date],
+                low: json_data1.low[date],
+                close: json_data1.close[date],
+                volume: json_data1.volume[date],
+                csi1: json_data1.csi1[date],
+                csi2: json_data1.csi2[date],
+                std_lower: json_data1.std_lower[date],
+                two_std_lower: json_data1.two_std_lower[date],
+                std_upper: json_data1.std_upper[date],
+                two_std_upper: json_data1.two_std_upper[date],
+                quadrant: json_data1.quadrant[date],
+            }));
+            loadChart1(chart1_data);
+
+        })();
+
+        function loadChart1(chart1_data) {
+            var last_dt = chart1_data[chart1_data.length - 1].date.split("-");
+            var dt = new Date(last_dt[0], parseInt(last_dt[1]) - 1, last_dt[2]);
+            dt.setDate(dt.getDate() + 1);
+            var dt1 = [dt.getFullYear(), dt.getMonth() + 1, dt.getDate()].join('-');
+            chart1_data.push({ "date": dt1, "quadrant": chart1_data[chart1_data.length - 1].quadrant });
+
+            dt.setDate(dt.getDate() + 1);
+            var dt2 = [dt.getFullYear(), dt.getMonth() + 1, dt.getDate()].join('-');
+            chart1_data.push({ "date": dt2, "quadrant": chart1_data[chart1_data.length - 1].quadrant });
+
+            //console.log(d);
+            //console.log(new Date(2015,1,1));
+
+            // Create chart instance
+            var chart = am4core.create("chartdiv1", am4charts.XYChart);
+            chart.responsive.enabled = true;
+            chart.paddingLeft = 0;
+            chart.paddingRight = 5;
+
+            // Add data
+            chart.data = chart1_data;
+
+            //var csi_chart_title = chart.titles.create();
+            //csi_chart_title.text = "CSI Chart";
+            //csi_chart_title.fontSize = 15;
+            //csi_chart_title.marginBottom = 5;
+            //csi_chart_title.marginTop = 5;
+
+            // CSI1 vs CSI2 Logic .......................
+            var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
+            dateAxis.renderer.minGridDistance = 60;
+            dateAxis.renderer.grid.template.location = 0.5;
+            dateAxis.startLocation = 0.5;
+            dateAxis.endLocation = 0.5;
+            dateAxis.renderer.grid.template.disabled = true;
+            dateAxis.events.on("startchanged", dateAxisChanged);
+            dateAxis.events.on("endchanged", dateAxisChanged);
+            function dateAxisChanged(ev) {
+                var start = new Date(ev.target.minZoomed);
+                var end = new Date(ev.target.maxZoomed);
+                //console.log("New range: " + start + " -- " + end);
+            }
+
+            /* Logic for quadrant background color starts */
+
+            var ranges = [];
+            var range_colors = [];
+
+            existing_quadrant = chart1_data[0].quadrant;
+            var dt = chart1_data[0].date.split("-");
+            var start_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+            var end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+            for (let i = 1; i < chart1_data.length; i++) {
+                if (chart1_data[i].quadrant != existing_quadrant) {
+                    var dt = chart1_data[i].date.split("-");
+                    end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+
+                    var range = dateAxis.axisRanges.create();
+                    range.date = start_dt;
+                    range.endDate = end_dt;
+                    if (existing_quadrant == 1) {
+                        range.axisFill.fill = am4core.color("#8AC926");
+                        range_colors.push(am4core.color("#8AC926"));
+                    }
+                    if (existing_quadrant == 2) {
+                        range.axisFill.fill = am4core.color("#FFCA3A");
+                        range_colors.push(am4core.color("#FFCA3A"));
+                    }
+                    if (existing_quadrant == 3) {
+                        range.axisFill.fill = am4core.color("#FF595E");
+                        range_colors.push(am4core.color("#FF595E"));
+                    }
+                    if (existing_quadrant == 4) {
+                        range.axisFill.fill = am4core.color("#1982C4");
+                        range_colors.push(am4core.color("#1982C4"));
+                    }
+                    range.axisFill.fillOpacity = 0.3;
+                    range.grid.disabled = true;
+
+                    ranges.push(range);
+
+                    existing_quadrant = chart1_data[i].quadrant;
+
+                    var dt = chart1_data[i].date.split("-");
+                    start_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+
+                } else {
+                    var dt = chart1_data[i].date.split("-");
+                    end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+                }
+            }
+
+            var range = dateAxis.axisRanges.create();
+            var dt = chart1_data[chart1_data.length - 1].date.split("-");
+            end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+            //end_dt.setDate(end_dt.getDate() + 2)
+            range.date = start_dt;
+            range.endDate = end_dt;
+            //console.log(start_dt, end_dt);
+            if (existing_quadrant == 1) {
+                range.axisFill.fill = am4core.color("#8AC926");
+                range_colors.push(am4core.color("#8AC926"));
+            }
+            if (existing_quadrant == 2) {
+                range.axisFill.fill = am4core.color("#FFCA3A");
+                range_colors.push(am4core.color("#FFCA3A"));
+            }
+            if (existing_quadrant == 3) {
+                range.axisFill.fill = am4core.color("#FF595E");
+                range_colors.push(am4core.color("#FF595E"));
+            }
+            if (existing_quadrant == 4) {
+                range.axisFill.fill = am4core.color("#1982C4");
+                range_colors.push(am4core.color("#1982C4"));
+            }
+            range.axisFill.fillOpacity = 0.3;
+            range.grid.disabled = true;
+
+            ranges.push(range);
+
+            /* Logic for quadrant background color ends */
+
+            var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+            //valueAxis.renderer.opposite = true;
+            //valueAxis.title.text="Cyclical Strength Index";
+            valueAxis.renderer.line.strokeOpacity = 1;
+            //valueAxis.showOnInit = true;
+            valueAxis.renderer.grid.template.disabled = true;
+            valueAxis.marginRight = 0;
+            valueAxis.marginLeft = 0;
+            valueAxis.title.marginRight = 0;
+            valueAxis.paddingRight = 0;
+            valueAxis.paddingLeft = 0;
+            valueAxis.renderer.labels.template.paddingLeft = 3;
+            valueAxis.renderer.labels.template.paddingRight = 3;
+
+
+            // SPY Historical Prices Logic....................
+            var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+            //valueAxis2.title.text="S&P 500";
+            valueAxis2.renderer.opposite = true;
+            //valueAxis2.stroke = "fuchsia";
+            //valueAxis2.strokeWidth = 1;
+            valueAxis2.renderer.line.strokeOpacity = 1;
+            //valueAxis2.renderer.line.strokeWidth = 2;
+            valueAxis2.renderer.grid.template.disabled = true;
+            valueAxis2.hidden = true;
+            valueAxis2.marginLeft = 0;
+            valueAxis2.marginRight = 0;
+            valueAxis2.title.marginLeft = 0;
+            valueAxis2.paddingRight = 0;
+            valueAxis2.paddingLeft = 0;
+            valueAxis2.renderer.labels.template.paddingLeft = 3;
+            valueAxis2.renderer.labels.template.paddingRight = 3;
+
+
+            var series1 = chart.series.push(new am4charts.LineSeries());
+            series1.name = "CSI";
+            series1.dataFields.valueY = "csi1";
+            series1.dataFields.dateX = "date";
+            series1.tooltipText = "CSI : {csi1}\nQuadrant : {quadrant}";
+            series1.tooltip.pointerOrientation = "vertical";
+            series1.strokeWidth = 2;
+            series1.tensionX = 0.8;
+            series1.yAxis = valueAxis;
+            valueAxis.renderer.line.stroke = series1.stroke;
+            valueAxis.renderer.labels.template.fill = series1.stroke;
+            series1.events.on("hidden", function () {
+                series1.hide();
+                if (series2.hidden == true) {
+                    valueAxis.hide();
+                }
+            });
+
+            series1.events.on("shown", function () {
+                series1.show();
+                valueAxis.show();
+            });
+
+            series1.tooltip.getFillFromObject = false;
+
+            series1.adapter.add("tooltipText", function (tooltipText) {
+                //console.log(series1.tooltipDataItem.dataContext);
+                if (series1.tooltipDataItem.dataContext.quadrant == 1) {
+                    series1.tooltip.background.fill = am4core.color("#8AC926");
+                }
+                if (series1.tooltipDataItem.dataContext.quadrant == 2) {
+                    series1.tooltip.background.fill = am4core.color("#FFCA3A");
+                }
+                if (series1.tooltipDataItem.dataContext.quadrant == 3) {
+                    series1.tooltip.background.fill = am4core.color("#FF595E");
+                }
+                if (series1.tooltipDataItem.dataContext.quadrant == 4) {
+                    series1.tooltip.background.fill = am4core.color("#1982C4");
+                }
+                //series1.tooltip.background.fillOpacity = 0.3;
+
+                return tooltipText;
+            });
+
+            var series2 = chart.series.push(new am4charts.LineSeries());
+            series2.name = "CSI Lag";
+            series2.dataFields.valueY = "csi2";
+            series2.dataFields.dateX = "date";
+            //series2.tooltipText = "CSI2 : {csi2}";
+            //series2.tooltipText = "";
+            series2.tooltip.disabled = true;
+            //series2.tooltip.pointerOrientation = "vertical";
+            series2.strokeWidth = 2;
+            series2.stroke = "violet";
+            series2.fill = "violet";
+            series2.strokeDasharray = "3,3"; // "2,4", "3,3"
+            series2.tensionX = 0.8;
+            series2.yAxis = valueAxis;
+            series2.events.on("hidden", function () {
+                series2.hide();
+                if (series1.hidden == true) {
+                    valueAxis.hide();
+                }
+            });
+
+            series2.events.on("shown", function () {
+                series2.show();
+                valueAxis.show();
+            });
+
+            var series5 = chart.series.push(new am4charts.CandlestickSeries());
+            series5.name = "S&P 500";
+            series5.dataFields.dateX = "date";
+            series5.dataFields.valueY = "close";
+            series5.dataFields.openValueY = "open";
+            series5.dataFields.lowValueY = "low";
+            series5.dataFields.highValueY = "high";
+            series5.tooltipText = "S&P 500: [bold]${valueY.value}[/]";
+            series5.yAxis = valueAxis2;
+            series5.hidden = true;
+            //series5.hidden=true;
+            series5.events.on("hidden", function () {
+                series5.hide();
+                valueAxis2.hide();
+            });
+
+            series5.events.on("shown", function () {
+                series5.show();
+                valueAxis2.show();
+            });
+
+            var series3_1 = chart.series.push(new am4charts.LineSeries());
+            series3_1.name = "1 Std Dev";
+            series3_1.dataFields.valueY = "std_lower";
+            series3_1.dataFields.dateX = "date";
+            series3_1.strokeWidth = 2;
+            series3_1.stroke = "tomato";
+            series3_1.fill = "tomato";
+            series3_1.hidden = true;
+            series3_1.hiddenInLegend = true;
+            series3_1.yAxis = valueAxis;
+
+
+            var series3_2 = chart.series.push(new am4charts.LineSeries());
+            series3_2.name = "1 Std Dev";
+            series3_2.dataFields.valueY = "std_upper";
+            series3_2.dataFields.dateX = "date";
+            //series3_1.tooltipText = "CSI1 : {csi1}";
+            //series3_1.tooltip.pointerOrientation = "vertical";
+            series3_2.strokeWidth = 2;
+            series3_2.stroke = "tomato";
+            series3_2.fill = "tomato";
+            series3_2.hidden = true;
+            series3_2.yAxis = valueAxis;
+            series3_2.hiddenInLegend = true;
+
+
+            var series4_1 = chart.series.push(new am4charts.LineSeries());
+            series4_1.name = "2 Std Dev";
+            series4_1.dataFields.valueY = "two_std_lower";
+            series4_1.dataFields.dateX = "date";
+            series4_1.strokeWidth = 2;
+            series4_1.stroke = "red";
+            series4_1.fill = "red";
+            series4_1.hidden = true;
+            series4_1.hiddenInLegend = true;
+            series4_1.yAxis = valueAxis;
+
+            var series4_2 = chart.series.push(new am4charts.LineSeries());
+            series4_2.name = "CSI Standard Deviations";
+            series4_2.dataFields.valueY = "two_std_upper";
+            series4_2.dataFields.dateX = "date";
+            series4_2.strokeWidth = 2;
+            series4_2.stroke = "red";
+            series4_2.fill = "red";
+            series4_2.yAxis = valueAxis;
+            series4_2.events.on("hidden", function () {
+                series3_1.hide();
+                series3_2.hide();
+                series4_1.hide();
+            });
+
+            series4_2.events.on("shown", function () {
+                series3_1.show();
+                series3_2.show();
+                series4_1.show();
+            });
+
+            var series4_3 = chart.series.push(new am4charts.LineSeries());
+            series4_3.name = "Grid Lines";
+            series4_3.dataFields.valueY = "csi1";
+            series4_3.dataFields.dateX = "date";
+            series4_3.strokeWidth = 0;
+            //series4_3.hidden=true;
+            series4_3.events.on("hidden", function () {
+                dateAxis.renderer.grid.template.disabled = true;
+                valueAxis.renderer.grid.template.disabled = true;
+                for (let i = 0; i < ranges.length; i++) {
+                    ranges[i].grid.disabled = true;
+                }
+            });
+
+            series4_3.events.on("shown", function () {
+                dateAxis.renderer.grid.template.disabled = false;
+                valueAxis.renderer.grid.template.disabled = false;
+                for (let i = 0; i < ranges.length; i++) {
+                    ranges[i].grid.disabled = true;
+                }
+            });
+
+            var series4_4 = chart.series.push(new am4charts.LineSeries());
+            series4_4.name = "Annotation";
+            series4_4.dataFields.valueY = "csi1";
+            series4_4.dataFields.dateX = "date";
+            series4_4.strokeWidth = 0;
+            series4_4.hidden = true;
+            series4_4.events.on("hidden", function () {
+                for (let i = 0; i < ranges.length; i++) {
+                    ranges[i].axisFill.fill = am4core.color("white");
+                    ranges[i].grid.disabled = true;
+                }
+            });
+
+            series4_4.events.on("shown", function () {
+                for (let i = 0; i < ranges.length; i++) {
+                    ranges[i].axisFill.fill = range_colors[i];
+                    ranges[i].grid.disabled = true;
+                }
+            });
+
+            var last_dt = chart1_data[chart1_data.length - 1].date.split("-");
+            var end_dt = new Date(last_dt[0], parseInt(last_dt[1]) - 1, last_dt[2]);
+            //end_dt.setDate(end_dt.getDate() + 2);
+            var start_dt = new Date(chart1_data[0]['date']);
+            // start_dt.setDate(end_dt.getDate() - 181);
+
+            chart.events.on("ready", function () {
+                dateAxis.zoomToDates(
+                    start_dt,
+                    end_dt,
+                    false,
+                    true
+                );
+            });
+
+            var selector = new am4plugins_rangeSelector.DateAxisRangeSelector();
+            selector.container = document.getElementById("controls");
+            selector.axis = dateAxis;
+
+            // Cursor
+            chart.cursor = new am4charts.XYCursor();
+            chart.cursor.xAxis = dateAxis;
+            //chart.scrollbarY = new am4core.Scrollbar();
+
+            // Scroll bar
+            //chart.scrollbarX = new am4charts.XYChartScrollbar();
+            //chart.scrollbarX.series.push(series1);
+            chart.scrollbarX = new am4core.Scrollbar();
+
+            // And, for a good measure, let's add a legend
+            chart.legend = new am4charts.Legend();
+
+            //chart.responsive.useDefault = false;
+        }
+
+    </script>
+</div>
