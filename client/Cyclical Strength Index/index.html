@@ -1,0 +1,1186 @@
+<script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/dark.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/plugins/rangeSelector.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<div id="chartdiv1" style="width:100%;"></div>
+<div id="chartdiv2" style="width:100%;"></div>
+<div id="chartdiv3" style="width:100%;"></div>
+<div id="chartdiv4" style="width:100%;"></div>
+<script>
+  ; (function () {
+    // Themes begin
+    am4core.useTheme(am4themes_animated);
+    // Themes end
+    $.get('https://economics-service.onrender.com/csi_data_chart_1', function (data, status) {
+      let json_data1 = JSON.parse(data);
+      let chart1_data = Object.keys(json_data1.open).map(date => ({
+        date,
+        open: json_data1.open[date],
+        high: json_data1.high[date],
+        low: json_data1.low[date],
+        close: json_data1.close[date],
+        volume: json_data1.volume[date],
+        csi1: json_data1.csi1[date],
+        csi2: json_data1.csi2[date],
+        std_lower: json_data1.std_lower[date],
+        two_std_lower: json_data1.two_std_lower[date],
+        std_upper: json_data1.std_upper[date],
+        two_std_upper: json_data1.two_std_upper[date],
+        quadrant: json_data1.quadrant[date],
+      }));
+      document.getElementById("chartdiv1").style.height = "600px"
+      document.getElementById("chartdiv1").innerHTML = "";
+      chart1_data[chart1_data.length - 1].disabled = false;
+      var last_dt = chart1_data[chart1_data.length - 1].date.split("-");
+      var dt = new Date(last_dt[0], parseInt(last_dt[1]) - 1, last_dt[2]);
+      dt.setDate(dt.getDate() + 1);
+      var dt1 = [dt.getFullYear(), dt.getMonth() + 1, dt.getDate()].join('-');
+      chart1_data.push({ "date": dt1, "quadrant": chart1_data[chart1_data.length - 1].quadrant });
+
+      dt.setDate(dt.getDate() + 1);
+      var dt2 = [dt.getFullYear(), dt.getMonth() + 1, dt.getDate()].join('-');
+      chart1_data.push({ "date": dt2, "quadrant": chart1_data[chart1_data.length - 1].quadrant });
+
+      //console.log(d);
+      //console.log(new Date(2015,1,1));
+
+      // Create chart instance
+      var chart = am4core.create("chartdiv1", am4charts.XYChart);
+      chart.responsive.enabled = true;
+      chart.paddingLeft = 0;
+      chart.paddingRight = 5;
+
+      // Add data
+      chart.data = chart1_data;
+
+      //var csi_chart_title = chart.titles.create();
+      //csi_chart_title.text = "CSI Chart";
+      //csi_chart_title.fontSize = 15;
+      //csi_chart_title.marginBottom = 5;
+      //csi_chart_title.marginTop = 5;
+
+      // CSI1 vs CSI2 Logic .......................
+      var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
+      dateAxis.renderer.minGridDistance = 60;
+      dateAxis.renderer.grid.template.location = 0.5;
+      dateAxis.startLocation = 0.5;
+      dateAxis.endLocation = 0.5;
+      dateAxis.renderer.grid.template.disabled = true;
+      dateAxis.events.on("startchanged", dateAxisChanged);
+      dateAxis.events.on("endchanged", dateAxisChanged);
+      function dateAxisChanged(ev) {
+        var start = new Date(ev.target.minZoomed);
+        var end = new Date(ev.target.maxZoomed);
+        //console.log("New range: " + start + " -- " + end);
+      }
+
+      /* Logic for quadrant background color starts */
+
+      var ranges = [];
+      var range_colors = [];
+
+      existing_quadrant = chart1_data[0].quadrant;
+      var dt = chart1_data[0].date.split("-");
+      var start_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+      var end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+      for (let i = 1; i < chart1_data.length; i++) {
+        if (chart1_data[i].quadrant != existing_quadrant) {
+          var dt = chart1_data[i].date.split("-");
+          end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+
+          var range = dateAxis.axisRanges.create();
+          range.date = start_dt;
+          range.endDate = end_dt;
+          if (existing_quadrant == 1) {
+            range.axisFill.fill = am4core.color("#8AC926");
+            range_colors.push(am4core.color("#8AC926"));
+          }
+          if (existing_quadrant == 2) {
+            range.axisFill.fill = am4core.color("#FFCA3A");
+            range_colors.push(am4core.color("#FFCA3A"));
+          }
+          if (existing_quadrant == 3) {
+            range.axisFill.fill = am4core.color("#FF595E");
+            range_colors.push(am4core.color("#FF595E"));
+          }
+          if (existing_quadrant == 4) {
+            range.axisFill.fill = am4core.color("#1982C4");
+            range_colors.push(am4core.color("#1982C4"));
+          }
+          range.axisFill.fillOpacity = 0.3;
+          range.grid.disabled = true;
+
+          ranges.push(range);
+
+          existing_quadrant = chart1_data[i].quadrant;
+
+          var dt = chart1_data[i].date.split("-");
+          start_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+
+        } else {
+          var dt = chart1_data[i].date.split("-");
+          end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+        }
+      }
+
+      var range = dateAxis.axisRanges.create();
+      var dt = chart1_data[chart1_data.length - 1].date.split("-");
+      end_dt = new Date(dt[0], parseInt(dt[1]) - 1, dt[2]);
+      //end_dt.setDate(end_dt.getDate() + 2)
+      range.date = start_dt;
+      range.endDate = end_dt;
+      //console.log(start_dt, end_dt);
+      if (existing_quadrant == 1) {
+        range.axisFill.fill = am4core.color("#8AC926");
+        range_colors.push(am4core.color("#8AC926"));
+      }
+      if (existing_quadrant == 2) {
+        range.axisFill.fill = am4core.color("#FFCA3A");
+        range_colors.push(am4core.color("#FFCA3A"));
+      }
+      if (existing_quadrant == 3) {
+        range.axisFill.fill = am4core.color("#FF595E");
+        range_colors.push(am4core.color("#FF595E"));
+      }
+      if (existing_quadrant == 4) {
+        range.axisFill.fill = am4core.color("#1982C4");
+        range_colors.push(am4core.color("#1982C4"));
+      }
+      range.axisFill.fillOpacity = 0.3;
+      range.grid.disabled = true;
+
+      ranges.push(range);
+
+      /* Logic for quadrant background color ends */
+
+      var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+      //valueAxis.renderer.opposite = true;
+      //valueAxis.title.text="Cyclical Strength Index";
+      valueAxis.renderer.line.strokeOpacity = 1;
+      //valueAxis.showOnInit = true;
+      valueAxis.renderer.grid.template.disabled = true;
+      valueAxis.marginRight = 0;
+      valueAxis.marginLeft = 0;
+      valueAxis.title.marginRight = 0;
+      valueAxis.paddingRight = 0;
+      valueAxis.paddingLeft = 0;
+      valueAxis.renderer.labels.template.paddingLeft = 3;
+      valueAxis.renderer.labels.template.paddingRight = 3;
+
+
+      // SPY Historical Prices Logic....................
+      var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+      //valueAxis2.title.text="S&P 500";
+      valueAxis2.renderer.opposite = true;
+      //valueAxis2.stroke = "fuchsia";
+      //valueAxis2.strokeWidth = 1;
+      valueAxis2.renderer.line.strokeOpacity = 1;
+      //valueAxis2.renderer.line.strokeWidth = 2;
+      valueAxis2.renderer.grid.template.disabled = true;
+      valueAxis2.hidden = true;
+      valueAxis2.marginLeft = 0;
+      valueAxis2.marginRight = 0;
+      valueAxis2.title.marginLeft = 0;
+      valueAxis2.paddingRight = 0;
+      valueAxis2.paddingLeft = 0;
+      valueAxis2.renderer.labels.template.paddingLeft = 3;
+      valueAxis2.renderer.labels.template.paddingRight = 3;
+
+
+      var series1 = chart.series.push(new am4charts.LineSeries());
+      series1.name = "CSI";
+      series1.dataFields.valueY = "csi1";
+      series1.dataFields.dateX = "date";
+      series1.tooltipText = "CSI : {csi1}\nQuadrant : {quadrant}";
+      series1.tooltip.pointerOrientation = "vertical";
+      series1.strokeWidth = 2;
+      series1.tensionX = 0.8;
+      series1.yAxis = valueAxis;
+      valueAxis.renderer.line.stroke = series1.stroke;
+      valueAxis.renderer.labels.template.fill = series1.stroke;
+      series1.events.on("hidden", function () {
+        series1.hide();
+        if (series2.hidden == true) {
+          valueAxis.hide();
+        }
+      });
+
+      series1.events.on("shown", function () {
+        series1.show();
+        valueAxis.show();
+      });
+
+      series1.tooltip.getFillFromObject = false;
+
+      series1.adapter.add("tooltipText", function (tooltipText) {
+        //console.log(series1.tooltipDataItem.dataContext);
+        if (series1.tooltipDataItem.dataContext.quadrant == 1) {
+          series1.tooltip.background.fill = am4core.color("#8AC926");
+        }
+        if (series1.tooltipDataItem.dataContext.quadrant == 2) {
+          series1.tooltip.background.fill = am4core.color("#FFCA3A");
+        }
+        if (series1.tooltipDataItem.dataContext.quadrant == 3) {
+          series1.tooltip.background.fill = am4core.color("#FF595E");
+        }
+        if (series1.tooltipDataItem.dataContext.quadrant == 4) {
+          series1.tooltip.background.fill = am4core.color("#1982C4");
+        }
+        //series1.tooltip.background.fillOpacity = 0.3;
+
+        return tooltipText;
+      });
+
+      var series2 = chart.series.push(new am4charts.LineSeries());
+      series2.name = "CSI Lag";
+      series2.dataFields.valueY = "csi2";
+      series2.dataFields.dateX = "date";
+      //series2.tooltipText = "CSI2 : {csi2}";
+      //series2.tooltipText = "";
+      series2.tooltip.disabled = true;
+      //series2.tooltip.pointerOrientation = "vertical";
+      series2.strokeWidth = 2;
+      series2.stroke = "violet";
+      series2.fill = "violet";
+      series2.strokeDasharray = "3,3"; // "2,4", "3,3"
+      series2.tensionX = 0.8;
+      series2.yAxis = valueAxis;
+      series2.events.on("hidden", function () {
+        series2.hide();
+        if (series1.hidden == true) {
+          valueAxis.hide();
+        }
+      });
+
+      series2.events.on("shown", function () {
+        series2.show();
+        valueAxis.show();
+      });
+
+      var series5 = chart.series.push(new am4charts.CandlestickSeries());
+      series5.name = "S&P 500";
+      series5.dataFields.dateX = "date";
+      series5.dataFields.valueY = "close";
+      series5.dataFields.openValueY = "open";
+      series5.dataFields.lowValueY = "low";
+      series5.dataFields.highValueY = "high";
+      series5.tooltipText = "S&P 500: [bold]${valueY.value}[/]";
+      series5.yAxis = valueAxis2;
+      series5.hidden = true;
+      //series5.hidden=true;
+      series5.events.on("hidden", function () {
+        series5.hide();
+        valueAxis2.hide();
+      });
+
+      series5.events.on("shown", function () {
+        series5.show();
+        valueAxis2.show();
+      });
+
+      var series3_1 = chart.series.push(new am4charts.LineSeries());
+      series3_1.name = "1 Std Dev";
+      series3_1.dataFields.valueY = "std_lower";
+      series3_1.dataFields.dateX = "date";
+      series3_1.strokeWidth = 2;
+      series3_1.stroke = "tomato";
+      series3_1.fill = "tomato";
+      series3_1.hidden = true;
+      series3_1.hiddenInLegend = true;
+      series3_1.yAxis = valueAxis;
+
+
+      var series3_2 = chart.series.push(new am4charts.LineSeries());
+      series3_2.name = "1 Std Dev";
+      series3_2.dataFields.valueY = "std_upper";
+      series3_2.dataFields.dateX = "date";
+      //series3_1.tooltipText = "CSI1 : {csi1}";
+      //series3_1.tooltip.pointerOrientation = "vertical";
+      series3_2.strokeWidth = 2;
+      series3_2.stroke = "tomato";
+      series3_2.fill = "tomato";
+      series3_2.hidden = true;
+      series3_2.yAxis = valueAxis;
+      series3_2.hiddenInLegend = true;
+
+
+      var series4_1 = chart.series.push(new am4charts.LineSeries());
+      series4_1.name = "2 Std Dev";
+      series4_1.dataFields.valueY = "two_std_lower";
+      series4_1.dataFields.dateX = "date";
+      series4_1.strokeWidth = 2;
+      series4_1.stroke = "red";
+      series4_1.fill = "red";
+      series4_1.hidden = true;
+      series4_1.hiddenInLegend = true;
+      series4_1.yAxis = valueAxis;
+
+      var series4_2 = chart.series.push(new am4charts.LineSeries());
+      series4_2.name = "CSI Standard Deviations";
+      series4_2.dataFields.valueY = "two_std_upper";
+      series4_2.dataFields.dateX = "date";
+      series4_2.strokeWidth = 2;
+      series4_2.stroke = "red";
+      series4_2.fill = "red";
+      series4_2.yAxis = valueAxis;
+      series4_2.events.on("hidden", function () {
+        series3_1.hide();
+        series3_2.hide();
+        series4_1.hide();
+      });
+
+      series4_2.events.on("shown", function () {
+        series3_1.show();
+        series3_2.show();
+        series4_1.show();
+      });
+
+      var series4_3 = chart.series.push(new am4charts.LineSeries());
+      series4_3.name = "Grid Lines";
+      series4_3.dataFields.valueY = "csi1";
+      series4_3.dataFields.dateX = "date";
+      series4_3.strokeWidth = 0;
+      //series4_3.hidden=true;
+      series4_3.events.on("hidden", function () {
+        dateAxis.renderer.grid.template.disabled = true;
+        valueAxis.renderer.grid.template.disabled = true;
+        for (let i = 0; i < ranges.length; i++) {
+          ranges[i].grid.disabled = true;
+        }
+      });
+
+      series4_3.events.on("shown", function () {
+        dateAxis.renderer.grid.template.disabled = false;
+        valueAxis.renderer.grid.template.disabled = false;
+        for (let i = 0; i < ranges.length; i++) {
+          ranges[i].grid.disabled = true;
+        }
+      });
+
+      var series4_4 = chart.series.push(new am4charts.LineSeries());
+      series4_4.name = "Annotation";
+      series4_4.dataFields.valueY = "csi1";
+      series4_4.dataFields.dateX = "date";
+      series4_4.strokeWidth = 0;
+      series4_4.hidden = true;
+      series4_4.events.on("hidden", function () {
+        for (let i = 0; i < ranges.length; i++) {
+          ranges[i].axisFill.fill = am4core.color("white");
+          ranges[i].grid.disabled = true;
+        }
+      });
+
+      series4_4.events.on("shown", function () {
+        for (let i = 0; i < ranges.length; i++) {
+          ranges[i].axisFill.fill = range_colors[i];
+          ranges[i].grid.disabled = true;
+        }
+      });
+
+      var last_dt = chart1_data[chart1_data.length - 1].date.split("-");
+      var end_dt = new Date(last_dt[0], parseInt(last_dt[1]) - 1, last_dt[2]);
+      //end_dt.setDate(end_dt.getDate() + 2);
+      var start_dt = new Date(chart1_data[0]['date']);
+      // start_dt.setDate(end_dt.getDate() - 181);
+
+      chart.events.on("ready", function () {
+        dateAxis.zoomToDates(
+          start_dt,
+          end_dt,
+          false,
+          true
+        );
+      });
+
+      //bullet
+
+      var bullet = series1.bullets.push(new am4charts.CircleBullet());
+      bullet.disabled = true;
+      bullet.propertyFields.disabled = "disabled";
+      bullet.fill = am4core.color("#22ff22");
+
+      var secondCircle = bullet.createChild(am4core.Circle);
+      secondCircle.radius = 6;
+      secondCircle.fill = am4core.color("#22ff22");
+
+
+      bullet.events.on("inited", function (event) {
+        animateBullet(event.target.circle);
+      })
+
+
+      function animateBullet(bullet) {
+        var animation = bullet.animate([{ property: "scale", from: 1, to: 5 }, { property: "opacity", from: 1, to: 0 }], 1000, am4core.ease.circleOut);
+        animation.events.on("animationended", function (event) {
+          animateBullet(event.target.object);
+        })
+      }
+
+      // var selector = new am4plugins_rangeSelector.DateAxisRangeSelector();
+      // selector.container = document.getElementById("controls");
+      // selector.axis = dateAxis;
+
+      // Cursor
+      chart.cursor = new am4charts.XYCursor();
+      chart.cursor.xAxis = dateAxis;
+      //chart.scrollbarY = new am4core.Scrollbar();
+
+      // Scroll bar
+      //chart.scrollbarX = new am4charts.XYChartScrollbar();
+      //chart.scrollbarX.series.push(series1);
+      chart.scrollbarX = new am4core.Scrollbar();
+
+      // And, for a good measure, let's add a legend
+      chart.legend = new am4charts.Legend();
+    })
+    $.get('https://economics-service.onrender.com/historical_performance_chart_2', function (data, status) {
+      let chart_data = JSON.parse(data);
+      document.getElementById("chartdiv2").innerHTML = "";
+      document.getElementById("chartdiv2").style.height = "450px"
+      // Themes begin
+      am4core.useTheme(am4themes_animated);
+      document.getElementById("avoiding_text1").innerHTML = (chart_data.quadrant3 * -100).toFixed(1);
+      document.getElementById("avoiding_text2").innerHTML = (chart_data.spy * 100).toFixed(1);
+      document.getElementById("avoiding_text3").innerHTML = ((chart_data.quadrant1 + chart_data.quadrant2 + chart_data.quadrant4) * 100).toFixed(1);
+      // Themes end
+      var snp_data = [{ 'Type': 'S&P 500', 'Total1': chart_data.spy }, { 'Type': 'CSI Quadrants', 'Q1': chart_data.quadrant1, 'Q2': chart_data.quadrant2, 'Q3': chart_data.quadrant3, 'Q4': chart_data.quadrant4 }];
+      snp_data[1]["Total2"] = snp_data[1]["Q1"] + snp_data[1]["Q2"] + snp_data[1]["Q3"] + snp_data[1]["Q4"]
+      snp_data[1]["Zero"] = 0
+
+      var active_quads = ["Q1", "Q2", "", "Q4"];
+
+
+      //console.log(snp_data);
+      //console.log(new Date(2015,1,1));
+
+      // Create chart instance
+      var bar_chart = am4core.create("chartdiv2", am4charts.XYChart);
+      bar_chart.hiddenState.properties.opacity = 0; // this makes initial fade in effect
+      bar_chart.responsive.enabled = true;
+      bar_chart.tooltip.label.fontSize = 12;
+
+      // Add data
+      bar_chart.data = snp_data;
+
+      // Set Title
+      var snp_bar_title = bar_chart.titles.create();
+      snp_bar_title.text = "S&P 500 vs CSI Quadrants Cumulative Returns";
+      snp_bar_title.fontSize = 15;
+      snp_bar_title.marginBottom = 12;
+
+      var categoryAxis = bar_chart.xAxes.push(new am4charts.CategoryAxis());
+      categoryAxis.dataFields.category = "Type";
+      //categoryAxis.renderer.grid.template.location = 0;
+
+
+      var valueAxis_chart2 = bar_chart.yAxes.push(new am4charts.ValueAxis());
+      valueAxis_chart2.title.text = "Cumulative Returns";
+      //valueAxis_chart2.renderer.inside = true;
+      //valueAxis_chart2.renderer.labels.template.disabled = true;
+      //valueAxis.min = 0;
+
+      // S&P 500 Bar
+      var chart2_series1 = bar_chart.series.push(new am4charts.ColumnSeries());
+      chart2_series1.name = "S&P 500 : [bold]" + (snp_data[0]["Total1"] * 100).toFixed(1) + " %";
+      chart2_series1.dataFields.valueY = "Total1";
+      chart2_series1.dataFields.categoryX = "Type";
+      chart2_series1.sequencedInterpolation = true;
+      chart2_series1.hiddenInLegend = true;
+      chart2_series1.fill = "grey";
+      chart2_series1.stroke = "grey";
+      chart2_series1.yAxis = valueAxis_chart2;
+      chart2_series1.columns.template.showTooltipOn = "always";
+      chart2_series1.tooltip.pointerOrientation = "down";
+      chart2_series1.columns.template.tooltipY = 0;
+      chart2_series1.tooltip.dy = -5;
+      chart2_series1.columns.template.column.cornerRadiusTopLeft = 10;
+      chart2_series1.columns.template.column.cornerRadiusTopRight = 10;
+
+      // Make it stacked
+      chart2_series1.stacked = true;
+
+      // Configure columns
+      chart2_series1.columns.template.width = am4core.percent(40);
+      chart2_series1.columns.template.tooltipText = "[bold]S&P 500[/] : {valueY}";
+
+      // Add label
+      //var labelBullet1 = chart2_series1.bullets.push(new am4charts.LabelBullet());
+      //labelBullet1.label.text = "[bold font-style: italic]S&P 500\nTotal Returns :\n" + (snp_data[0]["Total1"] *100).toFixed(1) + " %";
+      //labelBullet1.textAlign= "center";
+      //labelBullet1.contentAlign= "center";
+      //labelBullet1.locationY = 0.5;
+      //labelBullet1.label.hideOversized = true;
+
+      // CSI Quadrants Bar
+      var chart2_series2 = bar_chart.series.push(new am4charts.ColumnSeries());
+      chart2_series2.name = "CSI Quadrants : [bold]" + (snp_data[1]["Total2"] * 100).toFixed(1) + " %";
+      chart2_series2.dataFields.valueY = "Total2";
+      chart2_series2.dataFields.categoryX = "Type";
+      chart2_series2.sequencedInterpolation = true;
+      chart2_series2.hiddenInLegend = true;
+      chart2_series2.yAxis = valueAxis_chart2;
+      chart2_series2.strokeWidth = 0;
+      chart2_series2.columns.template.showTooltipOn = "always";
+      chart2_series2.tooltip.pointerOrientation = "down";
+      chart2_series2.columns.template.tooltipY = 0;
+      chart2_series2.tooltip.dy = -5;
+      chart2_series2.tooltip.label.fill = "black";
+      chart2_series2.columns.template.column.cornerRadiusTopLeft = 10;
+      chart2_series2.columns.template.column.cornerRadiusTopRight = 10;
+
+
+      var gradient = new am4core.LinearGradient();
+      gradient.addColor(am4core.color("#8AC926"));
+      gradient.addColor(am4core.color("#FFCA3A"));
+      gradient.addColor(am4core.color("#1982C4"));
+      gradient.rotation = 90;
+
+      var color_mapping = { "Q1": "#8AC926", "Q2": "#FFCA3A", "Q3": "#FF595E", "Q4": "#1982C4" };
+
+      chart2_series2.fill = gradient;
+
+      // Make it stacked
+      chart2_series2.stacked = true;
+
+      // Configure columns
+      chart2_series2.columns.template.width = am4core.percent(40);
+      chart2_series2.columns.template.tooltipText = "[bold]CSI Quadrants[/] : {valueY}";
+
+      // Add label
+      //var labelBullet2 = chart2_series2.bullets.push(new am4charts.LabelBullet());
+      //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n    " + (snp_data[1]["Total2"] *100).toFixed(1) + " %[/]";
+      //labelBullet2.locationY = 0.5;
+      //labelBullet2.label.hideOversized = true;
+
+
+      var chart2_series3 = bar_chart.series.push(new am4charts.ColumnSeries());
+      chart2_series3.name = "Quadrant 1 : [bold]" + (snp_data[1]["Q1"] * 100).toFixed(1) + " %";
+      chart2_series3.dataFields.valueY = "Zero";
+      chart2_series3.dataFields.categoryX = "Type";
+      //series3.sequencedInterpolation = true;
+      chart2_series3.stacked = true;
+      chart2_series3.columns.template.width = am4core.percent(50);
+      chart2_series3.columns.template.fill = "#8AC926";
+      chart2_series3.columns.template.strokeWidth = 0;
+      chart2_series3.events.on("hidden", function () {
+        //console.log("Q1 Hidden");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] - snp_data[1]["Q1"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n    " + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient1 = setBarGradient(0, "Hide", "Q1")
+
+        chart2_series2.fill = gradient1;
+
+        bar_chart.validateData();
+      });
+
+      chart2_series3.events.on("shown", function () {
+        //console.log("Q1 Shown");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] + snp_data[1]["Q1"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient2 = setBarGradient(0, "Show", "Q1")
+
+        chart2_series2.fill = gradient2;
+
+        bar_chart.validateData();
+      });
+
+
+      var chart2_series4 = bar_chart.series.push(new am4charts.ColumnSeries());
+      chart2_series4.name = "Quadrant 2 : [bold]" + (snp_data[1]["Q2"] * 100).toFixed(1) + " %";
+      chart2_series4.dataFields.valueY = "Zero";
+      chart2_series4.dataFields.categoryX = "Type";
+      //series4.sequencedInterpolation = true;
+      chart2_series4.stacked = true;
+      chart2_series4.columns.template.width = am4core.percent(50);
+      chart2_series4.columns.template.fill = "#FFCA3A";
+      chart2_series4.columns.template.strokeWidth = 0;
+      chart2_series4.events.on("hidden", function () {
+        //console.log("Q2 Hidden");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] - snp_data[1]["Q2"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient3 = setBarGradient(1, "Hide", "Q2")
+
+        chart2_series2.fill = gradient3;
+
+        bar_chart.validateData();
+      });
+
+      chart2_series4.events.on("shown", function () {
+        //console.log("Q2 Shown");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] + snp_data[1]["Q2"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient4 = setBarGradient(1, "Show", "Q2")
+
+        chart2_series2.fill = gradient4;
+
+        bar_chart.validateData();
+      });
+
+      var chart2_series5 = bar_chart.series.push(new am4charts.ColumnSeries());
+      chart2_series5.name = "Quadrant 3 : [bold]" + (snp_data[1]["Q3"] * 100).toFixed(1) + " %";
+      chart2_series5.dataFields.valueY = "Zero";
+      chart2_series5.dataFields.categoryX = "Type";
+      //series5.sequencedInterpolation = true;
+      chart2_series5.stacked = true;
+      chart2_series5.columns.template.width = am4core.percent(50);
+      chart2_series5.columns.template.fill = "#FF595E";
+      chart2_series5.columns.template.strokeWidth = 0;
+      chart2_series5.hidden = true;
+      chart2_series5.events.on("hidden", function () {
+        //console.log("Q3 Hidden");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] - snp_data[1]["Q3"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient5 = setBarGradient(2, "Hide", "Q3")
+
+        chart2_series2.fill = gradient5;
+
+        bar_chart.validateData();
+      });
+
+      chart2_series5.events.on("shown", function () {
+        //console.log("Q3 Shown");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] + snp_data[1]["Q3"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient6 = setBarGradient(2, "Show", "Q3")
+
+        chart2_series2.fill = gradient6;
+
+        bar_chart.validateData();
+      });
+
+      var chart2_series6 = bar_chart.series.push(new am4charts.ColumnSeries());
+      chart2_series6.name = "Quadrant 4 : [bold]" + (snp_data[1]["Q4"] * 100).toFixed(1) + " %";
+      chart2_series6.dataFields.valueY = "Zero";
+      chart2_series6.dataFields.categoryX = "Type";
+      //series6.sequencedInterpolation = true;
+      chart2_series6.stacked = true;
+      chart2_series6.columns.template.width = am4core.percent(50);
+      chart2_series6.columns.template.fill = "#1982C4";
+      chart2_series6.columns.template.strokeWidth = 0;
+      chart2_series6.events.on("hidden", function () {
+        //console.log("Q4 Hidden");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] - snp_data[1]["Q4"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient7 = setBarGradient(3, "Hide", "Q4")
+
+        chart2_series2.fill = gradient7;
+
+        bar_chart.validateData();
+
+      });
+
+      chart2_series6.events.on("shown", function () {
+        //console.log("Q4 Shown");
+        snp_data[1]["Total2"] = snp_data[1]["Total2"] + snp_data[1]["Q4"];
+        //labelBullet2.label.text = "[bold font-style: italic]CSI Quadrants\nTotal Returns :\n" + (snp_data[1]["Total2"] *100).toFixed(1) + " %";
+
+        bar_chart.validateData();
+
+        var gradient8 = setBarGradient(3, "Show", "Q4")
+
+        chart2_series2.fill = gradient8;
+
+        bar_chart.validateData();
+
+      });
+
+      function setBarGradient(index, type, quad, series) {
+
+        //console.log(active_quads);
+        var gradient = new am4core.LinearGradient();
+
+        if (type == "Show") {
+          active_quads[index] = quad;
+        }
+        if (type == "Hide") {
+          active_quads[index] = "";
+        }
+
+        for (let i = 0; i < active_quads.length; i++) {
+          if (active_quads[i] != "") {
+            //console.log(active_quads[i]);
+            gradient.addColor(am4core.color(color_mapping[active_quads[i]]));
+          }
+        }
+
+        gradient.rotation = 90;
+
+        //console.log(active_quads);
+
+        //console.log(gradient);
+
+        return gradient;
+
+      }
+
+      // Legend
+      bar_chart.legend = new am4charts.Legend();
+      //bar_chart.legend.position = "right";
+      //chart.legend.valueLabels.template.text = "{valueY.close}";
+
+      bar_chart.numberFormatter.numberFormat = "#.# %";
+      bar_chart.legend.labels.template.truncate = false;
+      //chart.legend.labels.template.width = 150;
+
+      bar_chart.responsive.rules.push({
+        relevant: function (target) {
+          if (target.pixelWidth <= 700) {
+            return true;
+          }
+
+          return false;
+        },
+        state: function (target, stateId) {
+
+          if (target instanceof am4charts.Chart) {
+            var state = target.states.create(stateId);
+            state.properties.paddingTop = 5;
+            state.properties.paddingRight = 5;
+            state.properties.paddingBottom = 5;
+            state.properties.paddingLeft = 5;
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          if (target instanceof am4charts.Legend) {
+            var state = target.states.create(stateId);
+            state.properties.paddingTop = 0;
+            state.properties.paddingRight = 0;
+            state.properties.paddingBottom = 0;
+            state.properties.paddingLeft = 0;
+            state.properties.marginLeft = 0;
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          if (target instanceof am4charts.AxisLabel) {
+            var state = target.states.create(stateId);
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          snp_bar_title.fontSize = 13;
+          //bar_chart.tooltip.label.fontSize = 9;
+          //chart2_series1.tooltip.fontSize=9;
+          //chart2_series2.tooltip.fontSize=9;
+
+          return null;
+        }
+      });
+    })
+    $.get('https://economics-service.onrender.com/risk_adjusted_returns_chart_3', function (data, status) {
+      let chart_data = JSON.parse(data);
+      document.getElementById("chartdiv3").innerHTML = "";
+      document.getElementById("chartdiv3").style.height = "500px"
+      // Themes begin
+      am4core.useTheme(am4themes_animated);
+      // Themes end
+
+      var sharpe_data = [{ 'Category': 'Quadrant 3', 'Value': chart_data.quadrant3_sharpe, 'label': '-1.2x', 'labelConfig': { 'fill': 'red' }, 'barConfig': { 'fill': 'dodgerblue', 'fillOpacity': 1.0 }, 'color': '#FF595E' }, { 'Category': 'Quadrant 2', 'Value': chart_data.quadrant2_sharpe, 'label': '-0.5x', 'labelConfig': { 'fill': 'red' }, 'barConfig': { 'fill': 'dodgerblue', 'fillOpacity': 1.0 }, 'color': '#FFCA3A' }, { 'Category': 'S&P 500', 'Value': chart_data.spy_sharpe, 'label': '1.0x', 'labelConfig': { 'fill': 'black' }, 'barConfig': { 'fill': 'violet', 'fillOpacity': 1.0 }, 'color': 'grey' }, { 'Category': 'Quadrant 4', 'Value': chart_data.quadrant4_sharpe, 'label': '1.7x', 'labelConfig': { 'fill': 'green' }, 'barConfig': { 'fill': 'dodgerblue', 'fillOpacity': 1.0 }, 'color': '#1982C4' }, { 'Category': 'Quadrant 1', 'Value': chart_data.quadrant1_sharpe, 'label': '3.2x', 'labelConfig': { 'fill': 'green' }, 'barConfig': { 'fill': 'dodgerblue', 'fillOpacity': 1.0 }, 'color': '#8AC926' }];
+
+      // Create chart instance
+      var sharpe_bar_chart = am4core.create("chartdiv3", am4charts.XYChart);
+      sharpe_bar_chart.hiddenState.properties.opacity = 0; // this makes initial fade in effect
+      sharpe_bar_chart.responsive.enabled = true;
+      sharpe_bar_chart.paddingLeft = 5;
+      sharpe_bar_chart.paddingRight = 35;
+
+      // Add data
+      sharpe_bar_chart.data = sharpe_data;
+
+      // Set Title
+      //var title = pnl_bar_chart.titles.create();
+      //title.text = "Daily Average PnL";
+      var sharpe_bar_chart_title = sharpe_bar_chart.titles.create();
+      sharpe_bar_chart_title.text = "Daily Average Sharpe Ratio";
+      sharpe_bar_chart_title.fontSize = 15;
+      sharpe_bar_chart_title.marginBottom = 5;
+
+      var sharpe_bar_chart_catAxis = sharpe_bar_chart.yAxes.push(new am4charts.CategoryAxis());
+      sharpe_bar_chart_catAxis.dataFields.category = "Category";
+      sharpe_bar_chart_catAxis.renderer.cellStartLocation = 0.1;
+      sharpe_bar_chart_catAxis.renderer.cellEndLocation = 0.9;
+      sharpe_bar_chart_catAxis.renderer.grid.template.location = 0;
+      //sharpe_bar_chart_catAxis.renderer.labels.template.fill = "red";
+
+      var valueAxis_sharpe_bar_chart = sharpe_bar_chart.xAxes.push(new am4charts.ValueAxis());
+      valueAxis_sharpe_bar_chart.title.text = "Relative Performance";
+      valueAxis_sharpe_bar_chart.title.paddingTop = 5;
+      valueAxis_sharpe_bar_chart.renderer.labels.template.disabled = true;
+      valueAxis_sharpe_bar_chart.renderer.minGridDistance = 50;
+      valueAxis_sharpe_bar_chart.renderer.grid.template.disabled = true;
+      //valueAxis_sharpe_bar_chart.min = -0.00172;
+      //valueAxis_sharpe_bar_chart.max = 0.00242;
+      //valueAxis_sharpe_bar_chart.strictMinMax = true;
+
+
+      var series1_sharpe_bar_chart = sharpe_bar_chart.series.push(new am4charts.ColumnSeries());
+      //series1_sharpe_bar_chart.name = "Returns";
+      series1_sharpe_bar_chart.dataFields.valueX = "Value";
+      series1_sharpe_bar_chart.dataFields.categoryY = "Category";
+      series1_sharpe_bar_chart.sequencedInterpolation = true;
+      series1_sharpe_bar_chart.hiddenInLegend = true;
+      series1_sharpe_bar_chart.columns.template.strokeOpacity = 0;
+      //series1_sharpe_bar_chart.columns.template.configField="barConfig";
+      series1_sharpe_bar_chart.xAxis = valueAxis_sharpe_bar_chart;
+
+
+      // Configure columns
+      series1_sharpe_bar_chart.columns.template.width = am4core.percent(95);
+      series1_sharpe_bar_chart.columns.template.tooltipText = "{categoryY}: [bold]{valueX}[/]";
+      series1_sharpe_bar_chart.tooltip.label.fill = "black";
+
+      series1_sharpe_bar_chart.columns.template.adapter.add("fill", function (fill, target) {
+        //console.log(target.dataItem.dataContext.barConfig.fill);
+        if (target.dataItem.dataContext.Category == "S&P 500") {
+          return "grey"
+        } else {
+          var pattern = new am4core.LinePattern();
+          //pattern.width = 50;
+          //pattern.height = 50;
+          pattern.strokeWidth = 1;
+          pattern.stroke = am4core.color(target.dataItem.dataContext.color);
+          pattern.rotation = 45;
+          return pattern;
+        }
+      });
+
+      series1_sharpe_bar_chart.columns.template.background.adapter.add("fill", function (fill, target) {
+        return target.dataItem ? am4core.color(target.dataItem.dataContext.color).lighten(0.97) : fill;
+      });
+
+      var sharpe_bar_chart_label = series1_sharpe_bar_chart.bullets.push(new am4charts.LabelBullet());
+      sharpe_bar_chart_label.label.text = "{label}";
+      sharpe_bar_chart_label.hideOversized = false;
+      sharpe_bar_chart_label.truncate = false;
+      //sharpe_bar_chart_label.label.horizontalCenter = "left";
+      sharpe_bar_chart_label.label.verticalCenter = "middle";
+      sharpe_bar_chart_label.fontWeight = "bolder";
+      sharpe_bar_chart_label.label.configField = "labelConfig";
+      sharpe_bar_chart_label.label.dx = 9;
+
+      sharpe_bar_chart_label.adapter.add("dx", function (dx, target) {
+        if (target.dataItem.dataContext.Value < 0) {
+          return -32;
+        } else {
+          return 9;
+        }
+
+      })
+
+      // Legend
+      sharpe_bar_chart.legend = new am4charts.Legend();
+      sharpe_bar_chart.legend.position = "top";
+      sharpe_bar_chart.maskBullets = false;
+
+      sharpe_bar_chart.responsive.rules.push({
+        relevant: function (target) {
+          if (target.pixelWidth <= 700) {
+            return true;
+          }
+
+          return false;
+        },
+        state: function (target, stateId) {
+
+          if (target instanceof am4charts.Chart) {
+            var state = target.states.create(stateId);
+            state.properties.paddingTop = 0;
+            state.properties.paddingRight = 5;
+            state.properties.paddingBottom = 5;
+            state.properties.paddingLeft = 5;
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          if (target instanceof am4charts.Legend) {
+            var state = target.states.create(stateId);
+            state.properties.paddingTop = 0;
+            state.properties.paddingRight = 0;
+            state.properties.paddingBottom = 0;
+            state.properties.paddingLeft = 0;
+            state.properties.marginLeft = 0;
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          if (target instanceof am4charts.AxisLabel) {
+            var state = target.states.create(stateId);
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          sharpe_bar_chart_title.fontSize = 12;
+
+          return null;
+        }
+      });
+    })
+    $.get('https://economics-service.onrender.com/distributions_chart_4', function (data, status) {
+      let json_data4 = JSON.parse(data);
+      let distributions_data = Object.keys(json_data4.sp500).map(x_val => ({
+        x_value: x_val,
+        black_scholes: json_data4.black_scholes[x_val],
+        q1: json_data4.quadrant1[x_val],
+        q2: json_data4.quadrant2[x_val],
+        q3: json_data4.quadrant3[x_val],
+        q4: json_data4.quadrant4[x_val],
+        sp500: json_data4.sp500[x_val],
+      }));
+      document.getElementById("chartdiv4").innerHTML = "";
+      document.getElementById("chartdiv4").style.height = "600px"
+      // Themes begin
+      am4core.useTheme(am4themes_animated);
+      // Themes end
+
+      am4charts.ValueAxis.prototype.getSeriesDataItem = function (series, position) {
+        var key = this.axisFieldName + this.axisLetter;
+        var value = this.positionToValue(position);
+        return series.dataItems.getIndex(series.dataItems.findClosestIndex(value, function (x) {
+          return x[key];
+        }, "any"));
+      }
+
+      //console.log(d);
+      //console.log(new Date(2015,1,1));
+
+      // Create chart instance
+      var quad_fat_tail_chart = am4core.create("chartdiv4", am4charts.XYChart);
+      quad_fat_tail_chart.responsive.enabled = true;
+
+      // Add data
+      quad_fat_tail_chart.data = distributions_data;
+
+      var quad_fat_tail_chart_title = quad_fat_tail_chart.titles.create();
+      quad_fat_tail_chart_title.text = "Quadrant Fat Tail Analysis";
+      quad_fat_tail_chart_title.fontSize = 15;
+      quad_fat_tail_chart_title.marginBottom = 15;
+
+      // CSI1 vs CSI2 Logic .......................
+      var quad_fat_xAxis = quad_fat_tail_chart.xAxes.push(new am4charts.ValueAxis());
+      quad_fat_xAxis.renderer.minGridDistance = 40;
+      quad_fat_xAxis.numberFormatter = new am4core.NumberFormatter();
+      quad_fat_xAxis.numberFormatter.numberFormat = "#.# %";
+      quad_fat_xAxis.renderer.line.strokeOpacity = 1;
+      //xAxis.renderer.grid.template.disabled = true;
+
+
+      var quad_fat_valueAxis = quad_fat_tail_chart.yAxes.push(new am4charts.ValueAxis());
+      quad_fat_valueAxis.title.text = "Expected Returns Distribution";
+      quad_fat_valueAxis.renderer.line.strokeOpacity = 1;
+      //valueAxis.renderer.grid.template.disabled = true;
+
+      var quad_fat_tail_series1 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series1.name = "S&P 500";
+      quad_fat_tail_series1.dataFields.valueY = "sp500";
+      quad_fat_tail_series1.dataFields.valueX = "x_value";
+      quad_fat_tail_series1.tooltipText = "S&P 500 : {valueY.value}";
+      quad_fat_tail_series1.tooltip.pointerOrientation = "vertical";
+      quad_fat_tail_series1.strokeWidth = 2;
+      quad_fat_tail_series1.xAxis = quad_fat_xAxis;
+      quad_fat_tail_series1.yAxis = quad_fat_valueAxis;
+      quad_fat_tail_series1.tensionX = 0.93;
+      quad_fat_tail_series1.tensionY = 0.91;
+      quad_fat_tail_series1.hidden = true;
+      quad_fat_tail_series1.events.on("hidden", function () {
+        quad_fat_tail_series1.hide();
+      });
+
+      quad_fat_tail_series1.events.on("shown", function () {
+        quad_fat_tail_series1.show();
+      });
+
+      var quad_fat_tail_series2 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series2.name = "Quadrant 1";
+      quad_fat_tail_series2.dataFields.valueY = "q1";
+      quad_fat_tail_series2.dataFields.valueX = "x_value";
+      quad_fat_tail_series2.tooltipText = "Quadrant 1 : {q1}";
+      quad_fat_tail_series2.tooltip.pointerOrientation = "vertical";
+      quad_fat_tail_series2.strokeWidth = 2;
+      quad_fat_tail_series2.tensionX = 0.93;
+      quad_fat_tail_series2.tensionY = 0.91;
+      quad_fat_tail_series2.fill = "#8AC926";
+      quad_fat_tail_series2.stroke = "#8AC926";
+
+      var quad_fat_tail_series3 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series3.name = "Quadrant 2";
+      quad_fat_tail_series3.dataFields.valueY = "q2";
+      quad_fat_tail_series3.dataFields.valueX = "x_value";
+      quad_fat_tail_series3.tooltipText = "Quadrant 2 : {q2}";
+      quad_fat_tail_series3.tooltip.pointerOrientation = "vertical";
+      quad_fat_tail_series3.strokeWidth = 2;
+      quad_fat_tail_series3.tensionX = 0.93;
+      quad_fat_tail_series3.tensionY = 0.91;
+      quad_fat_tail_series3.fill = "#FFCA3A";
+      quad_fat_tail_series3.stroke = "#FFCA3A";
+
+      var quad_fat_tail_series4 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series4.name = "Quadrant 3";
+      quad_fat_tail_series4.dataFields.valueY = "q3";
+      quad_fat_tail_series4.dataFields.valueX = "x_value";
+      quad_fat_tail_series4.tooltipText = "Quadrant 3 : {q3}";
+      quad_fat_tail_series4.tooltip.pointerOrientation = "vertical";
+      quad_fat_tail_series4.strokeWidth = 2;
+      quad_fat_tail_series4.tensionX = 0.93;
+      quad_fat_tail_series4.tensionY = 0.91;
+      quad_fat_tail_series4.fill = "#FF595E";
+      quad_fat_tail_series4.stroke = "#FF595E";
+
+      var quad_fat_tail_series5 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series5.name = "Quadrant 4";
+      quad_fat_tail_series5.dataFields.valueY = "q4";
+      quad_fat_tail_series5.dataFields.valueX = "x_value";
+      quad_fat_tail_series5.tooltipText = "Quadrant 4 : {q4}";
+      quad_fat_tail_series5.tooltip.pointerOrientation = "vertical";
+      quad_fat_tail_series5.strokeWidth = 2;
+      quad_fat_tail_series5.tensionX = 0.93;
+      quad_fat_tail_series5.tensionY = 0.91;
+      quad_fat_tail_series5.fill = "#1982C4";
+      quad_fat_tail_series5.stroke = "#1982C4";
+
+      var quad_fat_tail_series6 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series6.name = "Black Scholes";
+      quad_fat_tail_series6.dataFields.valueY = "black_scholes";
+      quad_fat_tail_series6.dataFields.valueX = "x_value";
+      quad_fat_tail_series6.tooltipText = "Black Scholes : {black_scholes}";
+      quad_fat_tail_series6.tooltip.pointerOrientation = "vertical";
+      quad_fat_tail_series6.strokeWidth = 2;
+      quad_fat_tail_series6.tensionX = 0.93;
+      quad_fat_tail_series6.tensionY = 0.91;
+      quad_fat_tail_series6.hidden = true;
+      quad_fat_tail_series6.events.on("hidden", function () {
+        quad_fat_tail_series6.hide();
+      });
+
+      quad_fat_tail_series6.events.on("shown", function () {
+        quad_fat_tail_series6.show();
+      });
+
+      var quad_fat_tail_label = quad_fat_tail_chart.createChild(am4core.Label);
+      quad_fat_tail_label.text = "";
+      //quad_fat_tail_label.fontSize = 18;
+      quad_fat_tail_label.align = "center";
+      quad_fat_tail_label.isMeasured = false;
+      quad_fat_tail_label.x = am4core.percent(13);
+      quad_fat_tail_label.y = am4core.percent(30);
+      quad_fat_tail_label.fill = "black";
+
+      var quad_fat_tail_series8 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series8.data = [{ "x": -0.04, "y": 2.5 },];
+      quad_fat_tail_series8.dataFields.valueY = "y";
+      quad_fat_tail_series8.dataFields.valueX = "x";
+      quad_fat_tail_series8.hiddenInLegend = true;
+
+      var circleBullet = quad_fat_tail_series8.bullets.push(new am4charts.CircleBullet());
+      circleBullet.circle.radius = 33;
+      circleBullet.circle.fill = am4core.color("#fff");
+      circleBullet.circle.strokeWidth = 2;
+      circleBullet.circle.fillOpacity = 0.0;
+      circleBullet.circle.stroke = "black";
+
+      var quad_fat_tail_series9 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series9.data = [{ "x": -0.05, "y": 22 }, { "x": -0.041, "y": 6.5 },];
+      quad_fat_tail_series9.dataFields.valueY = "y";
+      quad_fat_tail_series9.dataFields.valueX = "x";
+      quad_fat_tail_series9.hiddenInLegend = true;
+      quad_fat_tail_series9.stroke = "black";
+      quad_fat_tail_series9.strokeWidth = 2;
+
+      var quad_fat_tail_series7 = quad_fat_tail_chart.series.push(new am4charts.LineSeries());
+      quad_fat_tail_series7.name = "Annotation";
+      quad_fat_tail_series7.dataFields.valueY = "A";
+      quad_fat_tail_series7.dataFields.valueX = "B";
+      //option_accuracy_series4.hidden=true;
+      quad_fat_tail_series7.strokeWidth = 0;
+      quad_fat_tail_series7.events.on("hidden", function () {
+        quad_fat_tail_label.text = "";
+        quad_fat_tail_series8.hide();
+        quad_fat_tail_series9.hide();
+      });
+
+      quad_fat_tail_series7.events.on("shown", function () {
+        quad_fat_tail_label.text = "[bold]The likelyhood of large sell-offs\n varies significantly based on CSI\n quadrants.[/]";
+        quad_fat_tail_series8.show();
+        quad_fat_tail_series9.show();
+      });
+
+
+      // Cursor
+      quad_fat_tail_chart.cursor = new am4charts.XYCursor();
+      //quad_fat_tail_chart.cursor.xAxis = quad_fat_xAxis;
+      //quad_fat_tail_chart.cursor.yAxis = quad_fat_valueAxis;
+      quad_fat_tail_chart.scrollbarY = new am4core.Scrollbar();
+      quad_fat_tail_chart.scrollbarX = new am4core.Scrollbar();
+
+
+      // And, for a good measure, let's add a legend
+      quad_fat_tail_chart.legend = new am4charts.Legend();
+      //quad_fat_tail_chart.legend.position = "right";
+      //quad_fat_tail_chart.numberFormatter.numberFormat = "#.# %";
+
+      quad_fat_tail_chart.responsive.rules.push({
+        relevant: function (target) {
+          if (target.pixelWidth <= 700) {
+            return true;
+          }
+
+          return false;
+        },
+        state: function (target, stateId) {
+
+          if (target instanceof am4charts.Chart) {
+            var state = target.states.create(stateId);
+            state.properties.paddingTop = 5;
+            state.properties.paddingRight = 5;
+            state.properties.paddingBottom = 5;
+            state.properties.paddingLeft = 5;
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          if (target instanceof am4charts.Legend) {
+            var state = target.states.create(stateId);
+            state.properties.paddingTop = 0;
+            state.properties.paddingRight = 0;
+            state.properties.paddingBottom = 0;
+            state.properties.paddingLeft = 0;
+            state.properties.marginLeft = 0;
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          if (target instanceof am4charts.AxisLabel) {
+            var state = target.states.create(stateId);
+            state.properties.fontSize = 9;
+            return state;
+          }
+
+          return null;
+        }
+      });
+    })
+  })();
+</script>

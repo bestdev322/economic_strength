@@ -1,0 +1,182 @@
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/radar.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/plugins/exporting.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+<div class="card-body m-0 p-0">
+    <script>
+        ; (async function () {
+            var chart2_data = [];
+            var we_here = [];
+            await fetch('https://economics-service.onrender.com/heatmap_chart_2')
+                .then(response => response.json())
+                .then(response => { chart2_data = response });
+
+            await fetch('https://economics-service.onrender.com/heatmap_current_values_chart_2')
+                .then(response => response.json())
+                .then(response => { we_here = JSON.parse(response) });
+            
+            const closestIndex = chart2_data.reduce(function (prev, curr, index, arr) {
+                const distancePrev = Math.sqrt(Math.pow(arr[prev].x - we_here.cpi_inflation[0], 2) + Math.pow(arr[prev].y - we_here.cape[0], 2));
+                const distanceCurr = Math.sqrt(Math.pow(curr.x - we_here.cpi_inflation[0], 2) + Math.pow(curr.y - we_here.cape[0], 2));
+
+                return (distanceCurr < distancePrev ? index : prev);
+            }, 0);
+            chart2_data[closestIndex].bullet = 1;
+            // bullet: (json_data2.cape[index] === we_here.cape[0] && json_data2.cpi_inflation[index] === we_here.cpi_inflation[0] ? 1 : 0),
+            heatmapChart(chart2_data)
+        })();
+        function heatmapChart(expected_returns_data) {
+            am5.ready(function () {
+
+                var root = am5.Root.new("chartdiv2");
+
+                root.setThemes([
+                    am5themes_Animated.new(root)
+                ]);
+
+                var chart = root.container.children.push(am5xy.XYChart.new(root, {
+                    panX: false,
+                    panY: false,
+                    wheelX: "none",
+                    wheelY: "none",
+                    layout: root.verticalLayout
+                }));
+
+                chart.gridContainer.set("opacity", 0)
+                var x2 = [{ 'x2': '-4.0 %' }, { 'x2': '-3.2 %' }, { 'x2': '-2.5 %' }, { 'x2': '-1.7 %' }, { 'x2': '-1.0 %' }, { 'x2': '-0.2 %' }, { 'x2': '0.5 %' }, { 'x2': '1.3 %' }, { 'x2': '2.0 %' }, { 'x2': '2.8 %' }, { 'x2': '3.5 %' }, { 'x2': '4.3 %' }, { 'x2': '5.0 %' }, { 'x2': '5.8 %' }, { 'x2': '6.5 %' }, { 'x2': '7.3 %' }, { 'x2': '8.0 %' }, { 'x2': '8.8 %' }, { 'x2': '9.5 %' }, { 'x2': '10.3 %' }, { 'x2': '11.0 %' }, { 'x2': '11.8 %' }, { 'x2': '12.5 %' }, { 'x2': '13.3 %' }]
+                var y2 = [{ 'y2': '6.0' }, { 'y2': '7.25' }, { 'y2': '8.5' }, { 'y2': '9.75' }, { 'y2': '11.0' }, { 'y2': '12.25' }, { 'y2': '13.5' }, { 'y2': '14.75' }, { 'y2': '16.0' }, { 'y2': '17.25' }, { 'y2': '18.5' }, { 'y2': '19.75' }, { 'y2': '21.0' }, { 'y2': '22.25' }, { 'y2': '23.5' }, { 'y2': '24.75' }, { 'y2': '26.0' }, { 'y2': '27.25' }, { 'y2': '28.5' }, { 'y2': '29.75' }, { 'y2': '31.0' }, { 'y2': '32.25' }, { 'y2': '33.5' }, { 'y2': '34.75' }, { 'y2': '36.0' }]
+                var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+                    renderer: am5xy.AxisRendererX.new(root, {
+                        visible: false,
+                        minGridDistance: 40,
+                    }),
+                    name: "Annual CPI",
+                    categoryField: "x2",
+                }));
+
+                var yAxis = chart.yAxes.push(am5xy.CategoryAxis.new(root, {
+                    renderer: am5xy.AxisRendererY.new(root, {
+                        visible: false,
+                        minGridDistance: 20,
+                    }),
+                    name: "CAPE Ratio",
+                    maxDeviation: 0,
+                    categoryField: "y2"
+                }));
+
+                var series_squares = chart.series.push(am5xy.ColumnSeries.new(root, {
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    categoryYField: "y2",
+                    categoryXField: "x2",
+                    valueField: "value",
+                }));
+
+                //series.set("tooltip", tooltip);
+                series_squares.columns.template.setAll({
+                    tooltipText: "CAPE Ratio: {y2}\nAnnual CPI: {x2}\nReturns: {value_percent}",
+                    seriesTooltipTarget: "bullet",
+                    strokeOpacity: 0,
+                    width: am5.percent(100),
+                    height: am5.percent(100),
+                    templateField: "colorSettings",
+                    strokeWidth: 0,
+                });
+
+                tt = series_squares.getTooltip();
+                tt.label.setAll({
+                    fill: am5.color(0x000000)
+                });
+
+                series_squares.data.setAll(expected_returns_data);
+                xAxis.data.setAll(x2);
+                yAxis.data.setAll(y2);
+
+                chart.children.unshift(am5.Label.new(root, {
+                    text: "5-year Expected Return Profile of\n the S&P 500",
+                    fontSize: 18,
+                    fontWeight: "700",
+                    textAlign: "center",
+                    x: am5.percent(50),
+                    centerX: am5.percent(50),
+                    paddingTop: 0,
+                    paddingBottom: 10,
+                    //oversizedBehavior: "wrap",
+                    //maxWidth: 350
+                }));
+
+                xAxis.children.push(am5.Label.new(root, {
+                    text: "Annual CPI",
+                    fontWeight: "500",
+                    x: am5.percent(50),
+                    centerX: am5.percent(50),
+                }));
+
+                yAxis.children.push(am5.Label.new(root, {
+                    text: "P/E10 Ratio (CAPE)",
+                    fontWeight: "500",
+                    y: am5.percent(63),
+                    centerY: am5.percent(50),
+                    rotation: 270
+                }));
+
+                var blinking_dot_color = am5.color(0x0000ff);
+                series_squares.bullets.push(function (root1, series, dataItem) {
+                    if (dataItem.dataContext.bullet) {
+                        var container = am5.Container.new(root, {});
+                        var circle0 = container.children.push(am5.Circle.new(root, {
+                            radius: 5,
+                            fill: blinking_dot_color
+                        }));
+                        var circle1 = container.children.push(am5.Circle.new(root, {
+                            radius: 5,
+                            fill: blinking_dot_color
+                        }));
+
+                        circle1.animate({
+                            key: "radius",
+                            to: 15,
+                            duration: 1000,
+                            easing: am5.ease.out(am5.ease.cubic),
+                            loops: Infinity
+                        });
+                        circle1.animate({
+                            key: "opacity",
+                            to: 0,
+                            from: 1,
+                            duration: 1000,
+                            easing: am5.ease.out(am5.ease.cubic),
+                            loops: Infinity
+                        });
+
+                        return am5.Bullet.new(root, {
+                            sprite: container
+                        })
+                    }
+                });
+
+                series_squares.bullets.push(function (root1, series, dataItem) {
+                    if (dataItem.dataContext.bullet) {
+                        return am5.Bullet.new(root, {
+                            sprite: am5.Label.new(root, {
+                                text: "We are here",
+                                centerX: am5.percent(50),
+                                centerY: am5.percent(-10),
+                                populateText: true,
+                                fontSize: 15,
+                                textDecoration: "underline"
+                            })
+                        })
+                    }
+                });
+
+            });
+        }
+    </script>
+
+    <div id="chartdiv2" style="width:75%; height:75vh;" class="mx-auto"></div>
+
+</div>
